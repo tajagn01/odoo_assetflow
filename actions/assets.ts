@@ -135,7 +135,19 @@ export async function getAssets(filters?: {
   location?: string;
 }) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) return [];
+
+    const role = session.user.role;
     const whereClause: any = { deletedAt: null };
+
+    if (role === "DEPARTMENT_HEAD") {
+      const deptId = (session.user as any).departmentId;
+      if (!deptId) return [];
+      whereClause.departmentId = deptId;
+    } else if (role === "EMPLOYEE") {
+      whereClause.currentHolderId = session.user.id;
+    }
 
     if (filters?.categoryId) {
       whereClause.categoryId = filters.categoryId;

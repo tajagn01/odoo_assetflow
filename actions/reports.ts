@@ -15,8 +15,8 @@ async function verifyAuthorized() {
 
 export interface ReportingDataResponse {
   assetStatusDistribution: { status: string; count: number }[];
-  categoryDistribution: { categoryName: string; count: number; totalCost: number }[];
-  departmentDistribution: { departmentName: string; count: number; totalCost: number }[];
+  categoryDistribution: { categoryId: string; categoryName: string; count: number; totalCost: number }[];
+  departmentDistribution: { departmentId: string; departmentName: string; count: number; totalCost: number }[];
   maintenancePriorityDistribution: { priority: string; count: number }[];
   conditionDistribution: { condition: string; count: number }[];
   generalStats: {
@@ -25,6 +25,8 @@ export interface ReportingDataResponse {
     averageAssetCost: number;
     sharedResourcesCount: number;
   };
+  bookingHeatmap: { assetName: string; tag: string; count: number }[];
+  underutilizedAssets: { id: string; tag: string; name: string; location: string; acquisitionCost: number }[];
 }
 
 export async function getReportingData(): Promise<ReportingDataResponse | null> {
@@ -68,6 +70,7 @@ export async function getReportingData(): Promise<ReportingDataResponse | null> 
       const count = cat.assets.length;
       const totalCost = cat.assets.reduce((sum, asset) => sum + Number(asset.acquisitionCost.toString()), 0);
       return {
+        categoryId: cat.id,
         categoryName: cat.name,
         count,
         totalCost,
@@ -91,6 +94,7 @@ export async function getReportingData(): Promise<ReportingDataResponse | null> 
       const count = dept.assets.length;
       const totalCost = dept.assets.reduce((sum, asset) => sum + Number(asset.acquisitionCost.toString()), 0);
       return {
+        departmentId: dept.id,
         departmentName: dept.name,
         count,
         totalCost,
@@ -143,19 +147,69 @@ export async function getReportingData(): Promise<ReportingDataResponse | null> 
     const averageAssetCost = totalAssets > 0 ? totalValuation / totalAssets : 0;
     const sharedResourcesCount = assets.filter((a) => a.isSharedResource).length;
 
-    return {
-      assetStatusDistribution,
-      categoryDistribution,
-      departmentDistribution,
-      maintenancePriorityDistribution,
-      conditionDistribution,
-      generalStats: {
-        totalAssets,
-        totalValuation,
-        averageAssetCost,
-        sharedResourcesCount,
+    // 7. Resource booking heatmap data (Bookings per shared resource)
+    const bookingStats = await db.resourceBooking.groupBy({
+      by: ["assetId"],
+      _count: { id: true },
+      where: { status: { in: ["UPCOMING", "ONGOING", "COMPLETED"] } }
+    });
+
+    const bookingAssetIds = bookingStats.map(bs => bs.assetId);
+    const bookingAssets = await db.asset.findMany({
+      where: { id: { in: bookingAssetIds } },
+      select: { id: true, name: true, tag: true }
+    });
+
+    const bookingHeatmap = bookingStats.map(bs => {
+      const asset = bookingAssets.find(a => a.id === bs.assetId);
+      return {
+        assetName: asset?.name || "Unknown Resource",
+        tag: asset?.tag || "N/A",
+        count: bs._count.id
+      };
+    });
+
+    // 8. Underutilized Assets (Available assets with 0 allocations and 0 bookings)
+    const underutilizedAssets = await db.asset.findMany({
+      where: {
+        status: "AVAILABLE",
+        deletedAt: null,
+        allocations: { none: {} },
+        bookings: { none: {} }
       },
-    };
+      select: {
+        id: true,
+        tag: true,
+        name: true,
+        location: true,
+        acquisitionCost: true,
+      },
+      take: 5
+    });
+
+    // Format Decimal costs in underutilized assets list
+    const formattedUnderutilized = underutilizedAssets.map((a) => ({
+      ...a,
+      acquisitionCost: Number(a.acquisitionCost.toString()),
+    }));
+
+    return JSON.parse(
+      JSON.stringify({
+        assetStatusDistribution,
+        categoryDistribution,
+        departmentDistribution,
+        maintenancePriorityDistribution,
+        conditionDistribution,
+        generalStats: {
+          totalAssets,
+          totalValuation,
+          averageAssetCost,
+          sharedResourcesCount,
+        },
+        bookingHeatmap,
+        underutilizedAssets: formattedUnderutilized,
+      })
+    );
   } catch (error) {
     console.error("Reports aggregation error:", error);
     return null;

@@ -11,6 +11,8 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [historyTab, setHistoryTab] = useState<"assets" | "bookings" | "maintenance" | "activities" | "notifications">("assets");
+
 
   // Form states
   const [name, setName] = useState("");
@@ -302,36 +304,176 @@ export default function ProfilePage() {
         </form>
       )}
 
-      {/* Custody History Log Ledger */}
+      {/* Tabbed Activity and Records Segment */}
       <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden select-none">
-        <div className="border-b border-zinc-100 px-6 py-4 bg-zinc-50/50 flex items-center justify-between">
-          <h3 className="text-sm font-black text-zinc-950 uppercase tracking-tight flex items-center">
-            <FileText className="h-4 w-4 mr-2 text-zinc-400" /> Custody Ledger History
-          </h3>
+        {/* Tabs navigation */}
+        <div className="border-b border-zinc-200 bg-zinc-50/50 px-6 py-1 flex overflow-x-auto whitespace-nowrap space-x-4">
+          {[
+            { id: "assets", label: "Recent Assets" },
+            { id: "bookings", label: "My Bookings" },
+            { id: "maintenance", label: "Maintenance Requests" },
+            { id: "activities", label: "Recent Activities" },
+            { id: "notifications", label: "Notifications" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setHistoryTab(tab.id as any)}
+              className={`py-3 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+                historyTab === tab.id
+                  ? "border-zinc-950 text-zinc-950"
+                  : "border-transparent text-zinc-500 hover:text-zinc-900"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
+        {/* Tab Content Display */}
         <div className="divide-y divide-zinc-100 text-xs font-medium text-zinc-600">
-          {(!profile.allocations || profile.allocations.length === 0) ? (
-            <div className="py-12 text-center text-zinc-400 italic">
-              No historical allocations found for this profile.
-            </div>
-          ) : (
-            profile.allocations.map((alloc: any) => (
-              <div key={alloc.id} className="p-5 flex justify-between items-center hover:bg-zinc-50/30 transition-colors">
-                <div className="space-y-1">
-                  <span className="font-bold text-zinc-950 block">{alloc.asset.name}</span>
-                  <span className="text-[10px] text-zinc-400 block font-mono">Serial: {alloc.asset.serialNumber} | Value: ${alloc.asset.acquisitionCost}</span>
+          {/* 1. ASSETS TAB */}
+          {historyTab === "assets" && (
+            <>
+              {(!profile.allocations || profile.allocations.length === 0) ? (
+                <div className="py-12 text-center text-zinc-400 italic">
+                  No historical custody assets allocated.
                 </div>
-                <div className="text-right space-y-1">
-                  <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-zinc-100 text-zinc-800 border border-zinc-200">
-                    {alloc.status}
-                  </span>
-                  <span className="text-[9px] text-zinc-400 block mt-0.5">
-                    Allocated: {new Date(alloc.createdAt).toLocaleDateString()}
-                  </span>
+              ) : (
+                profile.allocations.map((alloc: any) => (
+                  <div key={alloc.id} className="p-5 flex justify-between items-center hover:bg-zinc-50/30 transition-colors">
+                    <div className="space-y-1">
+                      <span className="font-bold text-zinc-950 block">{alloc.asset.name}</span>
+                      <span className="text-[10px] text-zinc-400 block font-mono">
+                        Serial: {alloc.asset.serialNumber} | Value: ${alloc.asset.acquisitionCost}
+                      </span>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-zinc-100 text-zinc-800 border border-zinc-200">
+                        {alloc.status}
+                      </span>
+                      <span className="text-[9px] text-zinc-400 block mt-0.5">
+                        Allocated: {new Date(alloc.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </>
+          )}
+
+          {/* 2. BOOKINGS TAB */}
+          {historyTab === "bookings" && (
+            <>
+              {(!profile.bookings || profile.bookings.length === 0) ? (
+                <div className="py-12 text-center text-zinc-400 italic">
+                  No shared resource reservations logged.
                 </div>
-              </div>
-            ))
+              ) : (
+                profile.bookings.map((booking: any) => (
+                  <div key={booking.id} className="p-5 flex justify-between items-center hover:bg-zinc-50/30 transition-colors">
+                    <div className="space-y-1">
+                      <span className="font-bold text-zinc-950 block">{booking.asset.name}</span>
+                      <span className="text-[10px] text-zinc-400 block">
+                        Start: {new Date(booking.startTime).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-green-50 text-green-800 border border-green-200">
+                        {booking.status}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </>
+          )}
+
+          {/* 3. MAINTENANCE TAB */}
+          {historyTab === "maintenance" && (
+            <>
+              {(!profile.maintenance || profile.maintenance.length === 0) ? (
+                <div className="py-12 text-center text-zinc-400 italic">
+                  No repair tickets submitted.
+                </div>
+              ) : (
+                profile.maintenance.map((req: any) => (
+                  <div key={req.id} className="p-5 flex justify-between items-center hover:bg-zinc-50/30 transition-colors">
+                    <div className="space-y-1">
+                      <span className="font-bold text-zinc-950 block">{req.asset.name}</span>
+                      <span className="text-[10px] text-zinc-400 block">
+                        Issue: {req.issueDescription}
+                      </span>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
+                        {req.status}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </>
+          )}
+
+          {/* 4. ACTIVITIES TAB */}
+          {historyTab === "activities" && (
+            <>
+              {(!profile.activities || profile.activities.length === 0) ? (
+                <div className="py-12 text-center text-zinc-400 italic">
+                  No recent activities recorded.
+                </div>
+              ) : (
+                profile.activities.map((act: any) => (
+                  <div key={act.id} className="p-5 flex justify-between items-center hover:bg-zinc-50/30 transition-colors">
+                    <div className="space-y-1">
+                      <span className="font-bold text-zinc-950 block">{act.action.replace("_", " ")}</span>
+                      <span className="text-[10px] text-zinc-400 block font-mono">
+                        Entity: {act.entityType} ({act.entityId.slice(0, 8)})
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[9px] text-zinc-400 block">
+                        {new Date(act.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </>
+          )}
+
+          {/* 5. NOTIFICATIONS TAB */}
+          {historyTab === "notifications" && (
+            <>
+              {(!profile.notifications || profile.notifications.length === 0) ? (
+                <div className="py-12 text-center text-zinc-400 italic">
+                  No notifications found.
+                </div>
+              ) : (
+                profile.notifications.map((notif: any) => (
+                  <div key={notif.id} className="p-5 flex justify-between items-center hover:bg-zinc-50/30 transition-colors">
+                    <div className="space-y-1">
+                      <span className="font-bold text-zinc-950 block">{notif.title}</span>
+                      <span className="text-[10px] text-zinc-500 block">
+                        {notif.message}
+                      </span>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                        notif.isRead 
+                          ? "bg-zinc-50 text-zinc-400 border-zinc-200" 
+                          : "bg-blue-50 text-blue-700 border-blue-200"
+                      }`}>
+                        {notif.isRead ? "Read" : "Unread"}
+                      </span>
+                      <span className="text-[9px] text-zinc-400 block mt-0.5">
+                        {new Date(notif.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </>
           )}
         </div>
       </div>

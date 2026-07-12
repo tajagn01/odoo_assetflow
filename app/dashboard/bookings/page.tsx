@@ -145,6 +145,35 @@ export default function BookingsPage() {
     });
   };
 
+  const getBookingRenderInfo = (day: Date, hour: number) => {
+    const booking = getBookingForSlot(day, hour);
+    if (!booking) {
+      return { booking: null, shouldRender: true, rowSpan: 1 };
+    }
+
+    const coveredHours = hourSlots.filter((h) => {
+      const slotStart = new Date(day);
+      slotStart.setHours(h, 0, 0, 0);
+      const slotEnd = new Date(day);
+      slotEnd.setHours(h + 1, 0, 0, 0);
+
+      const bStart = new Date(booking.startTime);
+      const bEnd = new Date(booking.endTime);
+
+      return bStart < slotEnd && bEnd > slotStart;
+    });
+
+    if (coveredHours.length === 0) {
+      return { booking: null, shouldRender: true, rowSpan: 1 };
+    }
+
+    const minHour = Math.min(...coveredHours);
+    const shouldRender = hour === minHour;
+    const rowSpan = coveredHours.length;
+
+    return { booking, shouldRender, rowSpan };
+  };
+
   // Pre-fill time fields when clicking an empty cell
   const handleCellClick = (day: Date, hour: number) => {
     const formatDateTimeLocal = (date: Date, hr: number) => {
@@ -350,20 +379,24 @@ export default function BookingsPage() {
                           {hour}:00
                         </td>
                         {weekDays.map((day, idx) => {
-                          const booking = getBookingForSlot(day, hour);
+                          const { booking, shouldRender, rowSpan } = getBookingRenderInfo(day, hour);
+                          if (!shouldRender) {
+                            return null;
+                          }
                           const isOwner = booking && booking.userId === session?.user?.id;
                           const isPowerUser = ["ADMIN", "ASSET_MANAGER"].includes(session?.user?.role || "");
 
                           return (
                             <td
                               key={idx}
+                              rowSpan={rowSpan}
                               onClick={() => !booking && handleCellClick(day, hour)}
-                              className={`p-1.5 border-r border-zinc-200 last:border-r-0 h-16 vertical-top relative ${
-                                !booking ? "cursor-pointer hover:bg-zinc-50/50" : ""
+                              className={`p-1.5 border-r border-zinc-200 last:border-r-0 vertical-top relative ${
+                                !booking ? "cursor-pointer hover:bg-zinc-50/50 h-16" : ""
                               }`}
                             >
                               {booking ? (
-                                <div className={`h-full w-full rounded-lg p-2 flex flex-col justify-between transition-all border ${
+                                <div className={`absolute inset-1.5 rounded-lg p-2 flex flex-col justify-between transition-all border ${
                                   isOwner
                                     ? "bg-zinc-950 text-white border-transparent shadow-sm"
                                     : "bg-zinc-100 text-zinc-800 border-zinc-200"

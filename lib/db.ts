@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
@@ -14,23 +15,30 @@ if (!connectionString) {
 
 const poolConfig: pg.PoolConfig = {
   connectionString,
-  max: 5,
+  max: 10,
   connectionTimeoutMillis: 15000,
   idleTimeoutMillis: 30000,
 };
 
-if (process.env.NODE_ENV === "production") {
+const createPoolAndAdapter = () => {
   const pool = new pg.Pool(poolConfig);
+  pool.on("error", (err) => {
+    console.error("Unexpected error on idle pg pool client:", err.message);
+  });
   const adapter = new PrismaPg(pool);
-  prisma = new PrismaClient({ adapter });
+  return new PrismaClient({ adapter });
+};
+
+if (process.env.NODE_ENV === "production") {
+  prisma = createPoolAndAdapter();
 } else {
   if (!globalForPrisma.prisma) {
-    const pool = new pg.Pool(poolConfig);
-    const adapter = new PrismaPg(pool);
-    globalForPrisma.prisma = new PrismaClient({ adapter });
+    globalForPrisma.prisma = createPoolAndAdapter();
   }
   prisma = globalForPrisma.prisma;
 }
 
 export const db = prisma;
+
+
 

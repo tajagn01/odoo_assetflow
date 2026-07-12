@@ -43,7 +43,9 @@ export default function DeptHeadDashboard({ metrics, user }: DeptHeadDashboardPr
             <Building className="h-4 w-4 text-zinc-400" />
           </div>
           <div>
-            <div className="text-3xl font-black text-zinc-950 tracking-tight">12 Items</div>
+            <div className="text-3xl font-black text-zinc-950 tracking-tight">
+              {metrics?.deptStats?.assetsCount || 0} Items
+            </div>
             <p className="text-[9px] text-zinc-400 font-semibold mt-1">Assigned to team members</p>
           </div>
         </div>
@@ -54,7 +56,9 @@ export default function DeptHeadDashboard({ metrics, user }: DeptHeadDashboardPr
             <Users className="h-4 w-4 text-zinc-400" />
           </div>
           <div>
-            <div className="text-3xl font-black text-zinc-950 tracking-tight">4 Headcount</div>
+            <div className="text-3xl font-black text-zinc-950 tracking-tight">
+              {metrics?.deptStats?.employeesCount || 0} Headcount
+            </div>
             <p className="text-[9px] text-zinc-400 font-semibold mt-1">Assigned team members</p>
           </div>
         </div>

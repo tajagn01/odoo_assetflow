@@ -18,10 +18,19 @@ export async function getActivityLogs(filters?: {
   action?: string;
 }) {
   try {
-    const adminId = await verifyAdmin();
-    if (!adminId) return [];
+    const session = await getServerSession(authOptions);
+    if (!session) return [];
 
+    const role = session.user.role;
     const whereClause: any = {};
+
+    if (role === "DEPARTMENT_HEAD") {
+      const deptId = (session.user as any).departmentId;
+      if (!deptId) return [];
+      whereClause.user = { departmentId: deptId };
+    } else if (role === "EMPLOYEE") {
+      whereClause.userId = session.user.id;
+    }
 
     if (filters?.action) {
       whereClause.action = filters.action;
@@ -49,6 +58,7 @@ export async function getActivityLogs(filters?: {
             name: true,
             email: true,
             role: true,
+            departmentId: true,
           },
         },
       },

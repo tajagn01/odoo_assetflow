@@ -41,16 +41,23 @@ function LoginFormContent() {
         password,
       })
 
-      if (res?.error) {
-        const cleanMsg = res.error === "CredentialsSignin" || res.error === "Error"
+      console.log("signIn res:", res)
+
+      if (!res?.ok) {
+        const cleanMsg = res?.error === "CredentialsSignin" || res?.error === "Error" || res?.error === "undefined"
           ? "Invalid email or password."
-          : res.error
+          : res?.error || "Invalid email or password."
         setError(cleanMsg)
       } else {
-        router.push(callbackUrl)
+        let targetUrl = callbackUrl
+        if (targetUrl.includes("/login")) {
+          targetUrl = "/dashboard"
+        }
+        router.push(targetUrl)
         router.refresh()
       }
     } catch (err) {
+      console.error("signIn error:", err)
       setError("An unexpected error occurred during login. Please try again.")
     } finally {
       setIsLoading(false)
@@ -214,8 +221,52 @@ function LoginFormContent() {
               </button>
             </div>
 
+            {/* Demo Login Accounts */}
+            <div className="mt-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/20 p-3 space-y-2">
+              <span className="text-[8px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">
+                Quick Demo ERP Profiles
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  {
+                    role: "Admin",
+                    email: "newadmin@assetflow.com",
+                    pass: "AdminPassword123!",
+                  },
+                  {
+                    role: "Asset Manager",
+                    email: "manager@assetflow.com",
+                    pass: "ManagerPassword123!",
+                  },
+                  {
+                    role: "Dept Head",
+                    email: "head@assetflow.com",
+                    pass: "HeadPassword123!",
+                  },
+                  {
+                    role: "Employee",
+                    email: "amit@assetflow.com",
+                    pass: "EmployeePassword123!",
+                  },
+                ].map((demo) => (
+                  <button
+                    key={demo.role}
+                    type="button"
+                    onClick={() => {
+                      setEmail(demo.email);
+                      setPassword(demo.pass);
+                    }}
+                    className="flex flex-col text-left p-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all cursor-pointer select-none active:scale-95"
+                  >
+                    <span className="text-[9px] font-black text-zinc-800 dark:text-zinc-200">{demo.role}</span>
+                    <span className="text-[8px] text-zinc-450 dark:text-zinc-400 truncate w-full">{demo.email}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Link to Signup */}
-            <div className="mt-8 text-center text-xs font-semibold text-zinc-400">
+            <div className="mt-6 text-center text-xs font-semibold text-zinc-400">
               Don&apos;t have an account?{" "}
               <Link
                 href="/signup"

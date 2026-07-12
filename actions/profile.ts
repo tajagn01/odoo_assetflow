@@ -64,28 +64,44 @@ export async function getProfileData() {
       },
     }));
 
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      status: user.status,
-      phone: user.phone || "",
-      bio: user.bio || "",
-      location: user.location || "",
-      timezone: user.timezone || "UTC",
-      language: user.language || "en",
-      avatarUrl: user.avatarUrl || "",
-      jobTitle: user.jobTitle || "Associate",
-      employeeId: user.employeeId || `AF-EMP-${user.id.slice(0, 6).toUpperCase()}`,
-      appearanceTheme: user.appearanceTheme || "light",
-      emailNotificationsEnabled: user.emailNotificationsEnabled,
-      joinedAt: user.createdAt,
-      department: user.department ? { id: user.department.id, name: user.department.name } : null,
-      allocations: formattedAllocations,
-      bookings: formattedBookings,
-      maintenance: formattedMaintenance,
-    };
+    const notifications = await db.notification.findMany({
+      where: { userId: session.user.id },
+      take: 5,
+      orderBy: { createdAt: "desc" },
+    });
+
+    const activities = await db.activityLog.findMany({
+      where: { userId: session.user.id },
+      take: 5,
+      orderBy: { timestamp: "desc" },
+    });
+
+    return JSON.parse(
+      JSON.stringify({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        phone: user.phone || "",
+        bio: user.bio || "",
+        location: user.location || "",
+        timezone: user.timezone || "UTC",
+        language: user.language || "en",
+        avatarUrl: user.avatarUrl || "",
+        jobTitle: user.jobTitle || "Associate",
+        employeeId: user.employeeId || `AF-EMP-${user.id.slice(0, 6).toUpperCase()}`,
+        appearanceTheme: user.appearanceTheme || "light",
+        emailNotificationsEnabled: user.emailNotificationsEnabled,
+        joinedAt: user.createdAt,
+        department: user.department ? { id: user.department.id, name: user.department.name } : null,
+        allocations: formattedAllocations,
+        bookings: formattedBookings,
+        maintenance: formattedMaintenance,
+        notifications,
+        activities,
+      })
+    );
   } catch (error) {
     console.error("Fetch profile error:", error);
     return null;

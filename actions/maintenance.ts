@@ -9,13 +9,31 @@ import { ActionResponse } from "./auth";
 // Fetch maintenance requests
 export async function getMaintenanceRequests() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) return [];
+
+    const role = session.user.role;
+    const whereClause: any = {};
+
+    if (role === "DEPARTMENT_HEAD") {
+      const deptId = (session.user as any).departmentId;
+      if (!deptId) return [];
+      whereClause.OR = [
+        { raisedBy: { departmentId: deptId } },
+        { asset: { departmentId: deptId } }
+      ];
+    } else if (role === "EMPLOYEE") {
+      whereClause.raisedById = session.user.id;
+    }
+
     return await db.maintenanceRequest.findMany({
+      where: whereClause,
       include: {
         asset: {
-          select: { id: true, tag: true, name: true, status: true },
+          select: { id: true, tag: true, name: true, status: true, departmentId: true },
         },
         raisedBy: {
-          select: { id: true, name: true, email: true },
+          select: { id: true, name: true, email: true, departmentId: true },
         },
       },
       orderBy: { createdAt: "desc" },

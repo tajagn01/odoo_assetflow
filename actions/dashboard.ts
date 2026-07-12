@@ -11,30 +11,63 @@ export async function getDashboardMetrics() {
     if (!session) return null;
 
     const now = new Date();
+    const role = session.user.role;
+    const departmentId = (session.user as any).departmentId || null;
+
+    // We will build filters dynamically based on roles
+    let assetWhere: any = { deletedAt: null };
+    let bookingWhere: any = { status: { in: [BookingStatus.UPCOMING, BookingStatus.ONGOING] } };
+    let maintenanceWhere: any = {};
+    let overdueWhere: any = { status: AllocationStatus.ACTIVE, expectedReturnDate: { lt: now } };
+    let activityWhere: any = {};
+
+    if (role === "DEPARTMENT_HEAD") {
+      if (!departmentId) {
+        return {
+          kpis: { assetsAvailable: 0, assetsAllocated: 0, activeBookings: 0, maintenanceToday: 0 },
+          overdueReturns: [],
+          activities: [],
+          pendingMaintenance: [],
+          personal: { myAssetsCount: 0, myBookingsCount: 0, myRequestsCount: 0, myAssets: [], myBookings: [] },
+          deptStats: { employeesCount: 0, assetsCount: 0 }
+        };
+      }
+      assetWhere.departmentId = departmentId;
+      bookingWhere.asset = { departmentId };
+      maintenanceWhere.OR = [
+        { raisedBy: { departmentId } },
+        { asset: { departmentId } }
+      ];
+      overdueWhere.asset = { departmentId };
+      activityWhere.user = { departmentId };
+    } else if (role === "EMPLOYEE") {
+      assetWhere.currentHolderId = session.user.id;
+      bookingWhere.userId = session.user.id;
+      maintenanceWhere.raisedById = session.user.id;
+      overdueWhere.userId = session.user.id;
+      activityWhere.userId = session.user.id;
+    }
 
     // 1. Core KPIs
     const assetsAvailable = await db.asset.count({
-      where: { status: AssetStatus.AVAILABLE, deletedAt: null },
+      where: { ...assetWhere, status: AssetStatus.AVAILABLE },
     });
 
     const assetsAllocated = await db.asset.count({
-      where: { status: AssetStatus.ALLOCATED, deletedAt: null },
+      where: { ...assetWhere, status: AssetStatus.ALLOCATED },
     });
 
     const activeBookings = await db.resourceBooking.count({
-      where: { status: { in: [BookingStatus.UPCOMING, BookingStatus.ONGOING] } },
+      where: bookingWhere,
     });
 
     const maintenanceToday = await db.asset.count({
-      where: { status: AssetStatus.UNDER_MAINTENANCE, deletedAt: null },
+      where: { ...assetWhere, status: AssetStatus.UNDER_MAINTENANCE },
     });
 
     // 2. Overdue return alerts
     const overdueAllocations = await db.allocation.findMany({
-      where: {
-        status: AllocationStatus.ACTIVE,
-        expectedReturnDate: { lt: now },
-      },
+      where: overdueWhere,
       include: {
         asset: { select: { tag: true, name: true } },
         user: { select: { name: true, email: true } },
@@ -45,6 +78,7 @@ export async function getDashboardMetrics() {
 
     // 3. Recent activity logs (for audit log timeline feed)
     const recentActivities = await db.activityLog.findMany({
+      where: activityWhere,
       include: {
         user: { select: { name: true, role: true } },
       },
@@ -54,7 +88,7 @@ export async function getDashboardMetrics() {
 
     // 4. Pending Maintenance Requests requiring manager approval
     const pendingMaintenance = await db.maintenanceRequest.findMany({
-      where: { status: MaintenanceStatus.PENDING },
+      where: { ...maintenanceWhere, status: MaintenanceStatus.PENDING },
       include: {
         asset: { select: { tag: true, name: true } },
         raisedBy: { select: { name: true } },
@@ -94,24 +128,37 @@ export async function getDashboardMetrics() {
       where: { raisedById: session.user.id },
     });
 
-    return {
-      kpis: {
-        assetsAvailable,
-        assetsAllocated,
-        activeBookings,
-        maintenanceToday,
-      },
-      overdueReturns: overdueAllocations,
-      activities: recentActivities,
-      pendingMaintenance,
-      personal: {
-        myAssetsCount,
-        myBookingsCount,
-        myRequestsCount,
-        myAssets,
-        myBookings,
-      },
-    };
+    let deptEmployeesCount = 0;
+    let deptAssetsCount = 0;
+    if (role === "DEPARTMENT_HEAD" && departmentId) {
+      deptEmployeesCount = await db.user.count({ where: { departmentId } });
+      deptAssetsCount = await db.asset.count({ where: { departmentId, deletedAt: null } });
+    }
+
+    return JSON.parse(
+      JSON.stringify({
+        kpis: {
+          assetsAvailable,
+          assetsAllocated,
+          activeBookings,
+          maintenanceToday,
+        },
+        overdueReturns: overdueAllocations,
+        activities: recentActivities,
+        pendingMaintenance,
+        personal: {
+          myAssetsCount,
+          myBookingsCount,
+          myRequestsCount,
+          myAssets,
+          myBookings,
+        },
+        deptStats: {
+          employeesCount: deptEmployeesCount,
+          assetsCount: deptAssetsCount,
+        }
+      })
+    );
   } catch (error) {
     console.error("Failed to load dashboard metrics:", error);
     return null;

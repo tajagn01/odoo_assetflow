@@ -29,6 +29,7 @@ export default function AssetsPage() {
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [detailedAsset, setDetailedAsset] = useState<any | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showTagModal, setShowTagModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
 
@@ -434,7 +435,7 @@ export default function AssetsPage() {
           ) : detailedAsset ? (
             <div className="space-y-6">
               {/* Detail Header */}
-              <div className="border-b border-zinc-100 pb-4">
+              <div className="border-b border-zinc-100 pb-4 space-y-3">
                 <div className="flex justify-between items-start">
                   <div>
                     <span className="text-[10px] font-mono font-bold bg-zinc-100 px-2 py-0.5 border border-zinc-200 rounded">{detailedAsset.tag}</span>
@@ -450,6 +451,13 @@ export default function AssetsPage() {
                     </button>
                   )}
                 </div>
+                <button
+                  onClick={() => setShowTagModal(true)}
+                  className="flex items-center justify-center space-x-1.5 w-full border border-zinc-200 hover:bg-zinc-50 rounded-lg text-xs py-2 px-3 font-bold cursor-pointer transition-all bg-white"
+                >
+                  <Tag className="h-3.5 w-3.5 text-zinc-500 animate-none" />
+                  <span>Generate Printable Label</span>
+                </button>
               </div>
 
               {/* Specs */}
@@ -690,6 +698,133 @@ export default function AssetsPage() {
           </div>
         </div>
       )}
+
+      {/* PRINTABLE TAG LABEL MODAL */}
+      {showTagModal && detailedAsset && (
+        <div className="fixed inset-0 bg-black/55 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-zinc-200 p-6 space-y-6 shadow-xl relative select-none">
+            {/* Embedded styles for print media */}
+            <style dangerouslySetInnerHTML={{ __html: `
+              @media print {
+                body * {
+                  visibility: hidden;
+                }
+                #printable-tag, #printable-tag * {
+                  visibility: visible;
+                }
+                #printable-tag {
+                  position: fixed;
+                  left: 50%;
+                  top: 50%;
+                  transform: translate(-50%, -50%) scale(1.5);
+                  border: 1px solid #000 !important;
+                  box-shadow: none !important;
+                  padding: 12px !important;
+                }
+              }
+            `}} />
+
+            <div className="flex items-center justify-between border-b border-zinc-150 pb-3">
+              <h2 className="text-sm font-black text-zinc-950 uppercase tracking-tight">Print Asset Label</h2>
+              <button 
+                onClick={() => setShowTagModal(false)} 
+                className="text-zinc-400 hover:text-zinc-600 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Printable Tag Label Container */}
+            <div className="flex justify-center p-2">
+              <div 
+                id="printable-tag" 
+                className="w-[3.5in] h-[2.5in] border border-zinc-950 bg-white p-3 rounded flex flex-col justify-between select-none relative shadow-sm"
+              >
+                {/* Tag Header */}
+                <div className="flex justify-between items-center border-b border-zinc-950 pb-1.5">
+                  <div className="flex items-center space-x-1">
+                    <div className="h-4 w-4 bg-zinc-950 text-white rounded text-[8px] font-black flex items-center justify-center">AF</div>
+                    <span className="text-[9px] font-black tracking-widest uppercase">AssetFlow ERP</span>
+                  </div>
+                  <span className="text-[8px] font-bold text-zinc-500 font-mono">PRINTED: {new Date().toLocaleDateString()}</span>
+                </div>
+
+                {/* Tag Body */}
+                <div className="flex items-stretch justify-between flex-1 py-2 space-x-3">
+                  {/* Left Side: Metadata */}
+                  <div className="flex flex-col justify-between flex-1 text-left">
+                    <div>
+                      <div className="text-[14px] font-black text-zinc-950 font-mono tracking-tight leading-none">
+                        {detailedAsset.tag}
+                      </div>
+                      <div className="text-[10px] font-black text-zinc-800 line-clamp-1 mt-1 leading-tight">
+                        {detailedAsset.name}
+                      </div>
+                      <div className="text-[8px] font-bold text-zinc-500 uppercase mt-0.5">
+                        {detailedAsset.category?.name || "General"}
+                      </div>
+                    </div>
+                    <div className="space-y-0.5">
+                      <div className="text-[8px] text-zinc-400 font-mono">S/N: {detailedAsset.serialNumber || "N/A"}</div>
+                      <div className="text-[8px] text-zinc-400 font-mono">LOC: {detailedAsset.location || "N/A"}</div>
+                    </div>
+                  </div>
+
+                  {/* Right Side: QR Code */}
+                  <div className="w-16 h-16 shrink-0 border border-zinc-300 rounded p-1 flex items-center justify-center bg-white self-center">
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
+                        JSON.stringify({
+                          tag: detailedAsset.tag,
+                          name: detailedAsset.name,
+                          serial: detailedAsset.serialNumber,
+                        })
+                      )}`} 
+                      alt="Asset QR Code" 
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                </div>
+
+                {/* Tag Footer Barcode Simulation */}
+                <div className="flex flex-col items-center border-t border-zinc-950/20 pt-1">
+                  {/* Styled Barcode Lines */}
+                  <div className="w-full h-4 flex justify-between px-1 overflow-hidden opacity-90">
+                    {Array.from({ length: 48 }).map((_, i) => {
+                      const widthClass = i % 3 === 0 ? "w-[1px]" : i % 5 === 0 ? "w-[2px]" : "w-[0.5px]";
+                      return (
+                        <div key={i} className={`h-full bg-zinc-950 ${widthClass}`} />
+                      );
+                    })}
+                  </div>
+                  <span className="text-[7px] font-mono font-bold text-zinc-500 uppercase tracking-widest mt-0.5">
+                    * {detailedAsset.tag} *
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-3 border-t border-zinc-100 pt-4">
+              <Button
+                onClick={() => {
+                  window.print();
+                }}
+                className="flex-1 bg-zinc-950 hover:bg-zinc-900 text-white rounded-lg text-xs font-bold py-2 px-4 cursor-pointer"
+              >
+                Print Label
+              </Button>
+              <Button
+                onClick={() => setShowTagModal(false)}
+                className="border border-zinc-200 hover:bg-zinc-50 rounded-lg text-xs font-bold text-zinc-700 py-2 px-4 cursor-pointer bg-white"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

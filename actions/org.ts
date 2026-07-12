@@ -299,7 +299,23 @@ export async function deleteCategory(id: string): Promise<ActionResponse> {
 
 export async function getEmployees() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) return [];
+
+    const role = session.user.role;
+    if (role === "EMPLOYEE") {
+      return []; // Block Employees
+    }
+
+    const whereClause: any = {};
+    if (role === "DEPARTMENT_HEAD") {
+      const deptId = (session.user as any).departmentId;
+      if (!deptId) return [];
+      whereClause.departmentId = deptId;
+    }
+
     return await db.user.findMany({
+      where: whereClause,
       select: {
         id: true,
         name: true,
