@@ -19,6 +19,7 @@ import {
   getEmployees,
   updateEmployee,
 } from "@/actions/org";
+import Link from "next/link";
 
 type DepartmentType = {
   id: string;
@@ -438,7 +439,11 @@ export default function OrgSettingsPage() {
                     ) : (
                       departments.map((dept) => (
                         <tr key={dept.id} className="hover:bg-zinc-50/50">
-                          <td className="px-6 py-4 font-bold text-zinc-950">{dept.name}</td>
+                          <td className="px-6 py-4 font-bold text-zinc-950">
+                            <Link href={`/dashboard/departments/${dept.id}`} className="hover:underline">
+                              {dept.name}
+                            </Link>
+                          </td>
                           <td className="px-6 py-4 text-zinc-500">{dept.parent?.name || "-"}</td>
                           <td className="px-6 py-4 text-zinc-700">
                             {dept.manager ? (
@@ -618,7 +623,10 @@ export default function OrgSettingsPage() {
                         return (
                           <tr key={emp.id} className="hover:bg-zinc-50/50">
                             <td className="px-6 py-4 font-bold text-zinc-950">
-                              {emp.name} {isSelf && <span className="text-[10px] bg-zinc-100 text-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 ml-1">You</span>}
+                              <Link href={`/dashboard/employees/${emp.id}`} className="hover:underline">
+                                {emp.name}
+                              </Link>
+                              {isSelf && <span className="text-[10px] bg-zinc-100 text-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 ml-1">You</span>}
                             </td>
                             <td className="px-6 py-4 text-zinc-500">{emp.email}</td>
                             <td className="px-6 py-4 text-zinc-700">{emp.department?.name || <span className="text-xs text-zinc-400 italic">Unassigned</span>}</td>

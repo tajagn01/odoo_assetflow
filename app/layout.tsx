@@ -18,6 +18,7 @@ import { QueryProvider } from "@/providers/query-provider";
 export const metadata: Metadata = {
   title: "AssetFlow | Enterprise Asset & Resource Management ERP",
   description: "Production-ready enterprise-grade asset lifecycle management, resource booking, maintenance, and compliance auditing system.",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -36,6 +37,19 @@ export default function RootLayout({
             {children}
           </QueryProvider>
         </AuthProvider>
+        
+        {/* Service Worker registration */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+              navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                console.log('SW registered:', reg);
+              }).catch(function(err) {
+                console.error('SW registration failed:', err);
+              });
+            });
+          }
+        `}} />
       </body>
     </html>
   );

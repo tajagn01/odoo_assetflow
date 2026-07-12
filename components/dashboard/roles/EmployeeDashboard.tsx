@@ -142,14 +142,30 @@ export default function EmployeeDashboard({ metrics, user }: EmployeeDashboardPr
               </div>
             ) : (
               personal.myAssets.map((asset: any) => (
-                <div key={asset.id} className="p-4 flex justify-between items-center">
-                  <div>
-                    <span className="font-bold text-zinc-950">{asset.name}</span>
-                    <span className="text-[9px] text-zinc-400 block mt-0.5">Tag: {asset.tag} | Location: {asset.location}</span>
+                <div key={asset.id} className="p-4 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-bold text-zinc-950">{asset.name}</span>
+                      <span className="text-[9px] text-zinc-400 block mt-0.5">Tag: {asset.tag} | Location: {asset.location}</span>
+                    </div>
+                    <span className="text-[10px] font-bold bg-zinc-100 text-zinc-800 px-2 py-0.5 border border-zinc-200 rounded">
+                      {asset.condition}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-bold bg-zinc-100 text-zinc-800 px-2 py-0.5 border border-zinc-200 rounded">
-                    {asset.condition}
-                  </span>
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/dashboard/assets?assetId=${asset.id}&action=transfer`}
+                      className="flex-1 text-center text-[10px] font-bold text-zinc-700 border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 rounded-lg py-1.5 transition-colors"
+                    >
+                      Request Transfer
+                    </Link>
+                    <Link
+                      href={`/dashboard/assets?assetId=${asset.id}&action=return`}
+                      className="flex-1 text-center text-[10px] font-bold text-zinc-700 border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 rounded-lg py-1.5 transition-colors"
+                    >
+                      Return Asset
+                    </Link>
+                  </div>
                 </div>
               ))
             )}

@@ -96,6 +96,9 @@ export async function transitionMaintenance(data: {
   status: MaintenanceStatus;
   technicianName?: string;
   resolutionNotes?: string;
+  repairCost?: number;
+  estimatedCompletionDate?: string;
+  repairAttachments?: string;
 }): Promise<ActionResponse> {
   try {
     const session = await getServerSession(authOptions);
@@ -118,20 +121,21 @@ export async function transitionMaintenance(data: {
         where: { id: data.requestId },
         data: {
           status: data.status,
-          technicianName: data.technicianName || current.technicianName,
-          resolutionNotes: data.resolutionNotes || current.resolutionNotes,
+          technicianName: data.technicianName !== undefined ? data.technicianName : current.technicianName,
+          resolutionNotes: data.resolutionNotes !== undefined ? data.resolutionNotes : current.resolutionNotes,
+          repairCost: data.repairCost !== undefined ? data.repairCost : current.repairCost,
+          estimatedCompletionDate: data.estimatedCompletionDate ? new Date(data.estimatedCompletionDate) : current.estimatedCompletionDate,
+          repairAttachments: data.repairAttachments !== undefined ? data.repairAttachments : current.repairAttachments,
         },
       });
 
       // Update asset status based on request transition rules:
-      // PENDING -> APPROVED: status changes to UNDER_MAINTENANCE
-      // APPROVED -> TECHNICIAN_ASSIGNED -> IN_PROGRESS -> RESOLVED: status reverts to AVAILABLE
-      if (data.status === MaintenanceStatus.APPROVED) {
+      if ([MaintenanceStatus.APPROVED, MaintenanceStatus.TECHNICIAN_ASSIGNED, MaintenanceStatus.IN_PROGRESS].includes(data.status as any)) {
         await tx.asset.update({
           where: { id: current.assetId },
           data: { status: AssetStatus.UNDER_MAINTENANCE },
         });
-      } else if (data.status === MaintenanceStatus.RESOLVED || data.status === MaintenanceStatus.CLOSED) {
+      } else if ([MaintenanceStatus.RESOLVED, MaintenanceStatus.CLOSED].includes(data.status as any)) {
         await tx.asset.update({
           where: { id: current.assetId },
           data: { status: AssetStatus.AVAILABLE },
@@ -146,8 +150,19 @@ export async function transitionMaintenance(data: {
           entityType: "MaintenanceRequest",
           entityId: data.requestId,
           previousValues: { status: current.status },
-          newValues: { status: data.status },
+          newValues: { status: data.status, repairCost: data.repairCost },
         },
+      });
+
+      // Send notification alert to the creator
+      await tx.notification.create({
+        data: {
+          userId: current.raisedById,
+          title: `Repair Request Status: ${data.status}`,
+          message: `Your maintenance ticket for asset [${current.asset.tag}] ${current.asset.name} has been updated to ${data.status}.`,
+          type: "MAINTENANCE",
+          metadata: { requestId: data.requestId }
+        }
       });
 
       return request;

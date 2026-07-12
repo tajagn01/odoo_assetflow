@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, X } from "lucide-react";
+import { ArrowRight, X, Scan } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,8 @@ export default function DashboardQuickActions({
   // Modal triggers
   const [showAllocateModal, setShowAllocateModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
+  const [scanAssetId, setScanAssetId] = useState("");
 
   // Form Fields
   const [allocAssetId, setAllocAssetId] = useState("");
@@ -149,6 +151,14 @@ export default function DashboardQuickActions({
           >
             <span>Raise Repair Ticket</span>
             <ArrowRight className="h-4 w-4 text-zinc-400" />
+          </button>
+
+          <button
+            onClick={() => { setShowScanModal(true); resetMessages(); }}
+            className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-5 hover:border-zinc-400 hover:bg-zinc-50 transition-all text-left font-bold text-zinc-950 text-sm cursor-pointer shadow-sm"
+          >
+            <span>Scan QR / Barcode</span>
+            <Scan className="h-4 w-4 text-indigo-500" />
           </button>
         </div>
       </div>
@@ -321,6 +331,70 @@ export default function DashboardQuickActions({
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* QUICK SCANNER MODAL SIMULATOR */}
+      {showScanModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full border border-zinc-200 p-6 space-y-4 shadow-xl text-xs font-semibold">
+            <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+              <h2 className="text-sm font-black text-zinc-950 uppercase flex items-center gap-1.5">
+                <Scan className="h-4.5 w-4.5 text-indigo-500 animate-pulse" /> QR / Barcode Scanner
+              </h2>
+              <button onClick={() => setShowScanModal(false)} className="text-zinc-450 hover:text-zinc-650 cursor-pointer">
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
+
+            {/* Scanning Box Viewport */}
+            <div className="relative aspect-video w-full rounded-xl bg-zinc-900 border border-zinc-950 overflow-hidden flex flex-col items-center justify-center text-center">
+              <div className="absolute inset-x-0 h-0.5 bg-green-400 shadow-[0_0_8px_rgba(74,222,128,1)] animate-bounce" style={{ top: "30%" }} />
+              <Scan className="h-10 w-10 text-zinc-700 stroke-[1.5]" />
+              <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-2">Accessing mobile camera...</span>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="qScan">Select Asset Tag to Simulate Scan</Label>
+              <select
+                id="qScan"
+                value={scanAssetId}
+                onChange={(e) => setScanAssetId(e.target.value)}
+                required
+                className="w-full h-10 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm focus:outline-none cursor-pointer"
+              >
+                <option value="">Choose Asset tag...</option>
+                {assets.map((asset) => (
+                  <option key={asset.id} value={asset.id}>
+                    [{asset.tag}] {asset.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex gap-2 border-t border-zinc-100 pt-4">
+              <Button
+                type="button"
+                onClick={() => {
+                  if (scanAssetId) {
+                    router.push(`/dashboard/assets/${scanAssetId}`);
+                    setShowScanModal(false);
+                  }
+                }}
+                disabled={!scanAssetId}
+                className="flex-1 bg-zinc-950 hover:bg-zinc-900 text-white rounded-lg text-xs font-bold"
+              >
+                Confirm Scan Simulation
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowScanModal(false)}
+                className="border border-zinc-200 hover:bg-zinc-50 rounded-lg text-xs"
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         </div>
       )}

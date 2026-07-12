@@ -48,4 +48,35 @@ export class NotificationService {
     }
     return await NotificationRepository.create(userId, title, message);
   }
+
+  /**
+   * Toggle pinned state
+   */
+  static async togglePin(id: string, userId: string, isPinned: boolean): Promise<Notification> {
+    if (!id || !userId) {
+      throw new Error("Invalid arguments for notification update.");
+    }
+    return await NotificationRepository.togglePin(id, userId, isPinned);
+  }
+
+  /**
+   * Toggle archived state
+   */
+  static async toggleArchive(id: string, userId: string, isArchived: boolean): Promise<Notification> {
+    if (!id || !userId) {
+      throw new Error("Invalid arguments for notification update.");
+    }
+    return await NotificationRepository.toggleArchive(id, userId, isArchived);
+  }
+
+  /**
+   * Delete notification
+   */
+  static async deleteNotification(id: string, userId: string): Promise<Notification> {
+    if (!id || !userId) {
+      throw new Error("Invalid arguments for notification deletion.");
+    }
+    return await NotificationRepository.deleteNotification(id, userId);
+  }
 }
+

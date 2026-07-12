@@ -37,10 +37,14 @@ enum AllocationStatus {
 }
 
 enum BookingStatus {
+  PENDING
+  APPROVED
   UPCOMING
   ONGOING
   COMPLETED
   CANCELLED
+  REJECTED
+  EXPIRED
 }
 
 enum MaintenancePriority {
@@ -218,6 +222,12 @@ model ResourceBooking {
   endTime     DateTime      @map("end_time")
   status      BookingStatus @default(UPCOMING)
 
+  purpose     String?
+  notes       String?
+  attendees   String?
+  priority    String?       @default("MEDIUM")
+  department  String?
+
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
@@ -238,6 +248,10 @@ model MaintenanceRequest {
   technicianName   String?             @map("technician_name")
   resolutionNotes  String?             @map("resolution_notes")
   photoUrl         String?             @map("photo_url")
+
+  repairCost              Float?              @map("repair_cost")
+  estimatedCompletionDate DateTime?           @map("estimated_completion_date")
+  repairAttachments       String?             @map("repair_attachments")
 
   createdAt        DateTime            @default(now()) @map("created_at")
   updatedAt        DateTime            @updatedAt @map("updated_at")
@@ -318,6 +332,8 @@ model Notification {
   userId    String   @map("user_id")
   title     String
   message   String
+  type      String?  @default("GENERAL") // GENERAL, TRANSFER_REQUEST, ALLOCATION, RETURN, etc.
+  metadata  Json?    // Structured payload for actionable notifications
   isRead    Boolean  @default(false) @map("is_read")
   createdAt DateTime @default(now()) @map("created_at")
 

@@ -17,10 +17,7 @@ import DashboardQuickActions from "@/components/dashboard/DashboardQuickActions"
 import { revalidatePath } from "next/cache";
 import { transitionMaintenance } from "@/actions/maintenance";
 
-import AdminDashboard from "@/components/dashboard/roles/AdminDashboard";
-import ManagerDashboard from "@/components/dashboard/roles/ManagerDashboard";
-import DeptHeadDashboard from "@/components/dashboard/roles/DeptHeadDashboard";
-import EmployeeDashboard from "@/components/dashboard/roles/EmployeeDashboard";
+import DashboardWrapper from "@/components/dashboard/DashboardWrapper";
 
 export default async function DashboardOverview() {
   const session = await getServerSession(authOptions);
@@ -46,18 +43,6 @@ export default async function DashboardOverview() {
     employees = employeeList || [];
   }
 
-  const handleQuickApprove = async (formData: FormData) => {
-    "use server";
-    const requestId = formData.get("requestId") as string;
-    if (requestId) {
-      await transitionMaintenance({
-        requestId,
-        status: "APPROVED",
-      });
-      revalidatePath("/dashboard");
-    }
-  };
-
   const role = session.user.role;
 
   return (
@@ -72,27 +57,13 @@ export default async function DashboardOverview() {
         </div>
       </div>
 
-      {/* Render matching dashboard deck */}
-      {role === "ADMIN" && (
-        <AdminDashboard metrics={metrics} user={session.user} />
-      )}
-
-      {role === "ASSET_MANAGER" && (
-        <ManagerDashboard
-          metrics={metrics}
-          assets={assets}
-          employees={employees}
-          handleQuickApprove={handleQuickApprove}
-        />
-      )}
-
-      {role === "DEPARTMENT_HEAD" && (
-        <DeptHeadDashboard metrics={metrics} user={session.user} />
-      )}
-
-      {role === "EMPLOYEE" && (
-        <EmployeeDashboard metrics={metrics} user={session.user} />
-      )}
+      <DashboardWrapper
+        metrics={metrics}
+        user={session.user}
+        assets={assets}
+        employees={employees}
+        role={role}
+      />
     </div>
   );
 }

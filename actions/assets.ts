@@ -245,6 +245,13 @@ export async function getAssetDetails(assetId: string) {
           },
           orderBy: { startTime: "desc" },
         },
+        auditItems: {
+          include: {
+            auditCycle: true,
+            verifiedBy: { select: { id: true, name: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        },
       },
     });
 
@@ -366,3 +373,289 @@ export async function importAssetsAction(assets: Array<{
     return { success: false, message: error.message || "Failed to import assets." };
   }
 }
+
+// Fetch all activity logs (comments, updates, audits) for a specific asset
+export async function getAssetActivityLogs(assetId: string) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) return [];
+
+    return await db.activityLog.findMany({
+      where: {
+        entityType: "Asset",
+        entityId: assetId,
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true, role: true } },
+      },
+      orderBy: { timestamp: "desc" },
+    });
+  } catch (error) {
+    console.error("Failed to fetch asset logs:", error);
+    return [];
+  }
+}
+
+// Add a comment or internal note to an asset via ActivityLog
+export async function addAssetActivityLog(data: {
+  assetId: string;
+  action: "ADD_COMMENT" | "ADD_NOTE";
+  text: string;
+}): Promise<ActionResponse> {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return { success: false, message: "Unauthorized." };
+    }
+
+    if (!data.text.trim()) {
+      return { success: false, message: "Content cannot be empty." };
+    }
+
+    const log = await db.activityLog.create({
+      data: {
+        userId: session.user.id,
+        action: data.action,
+        entityType: "Asset",
+        entityId: data.assetId,
+        newValues: { text: data.text.trim() },
+      },
+    });
+
+    return { success: true, message: "Note/Comment saved successfully.", data: log };
+  } catch (error: any) {
+    console.error("Failed to write asset log:", error);
+    return { success: false, message: "Failed to write log." };
+  }
+}
+
+// ----------------------------------------------------
+// ENTERPRISE BULK ACTIONS
+// ----------------------------------------------------
+
+export async function bulkDeleteAssets(assetIds: string[]): Promise<ActionResponse> {
+  try {
+    const userId = await verifyAuthorized();
+    if (!userId) return { success: false, message: "Unauthorized." };
+
+    if (!assetIds || assetIds.length === 0) {
+      return { success: false, message: "No assets selected." };
+    }
+
+    // Business Rule: Cannot delete allocated assets
+    const allocatedCount = await db.asset.count({
+      where: { id: { in: assetIds }, status: AssetStatus.ALLOCATED, deletedAt: null }
+    });
+
+    if (allocatedCount > 0) {
+      return { success: false, message: `Operation rejected. ${allocatedCount} of the selected assets are currently allocated.` };
+    }
+
+    const result = await db.$transaction(async (tx) => {
+      // Soft delete assets by setting deletedAt
+      const updated = await tx.asset.updateMany({
+        where: { id: { in: assetIds } },
+        data: { deletedAt: new Date() }
+      });
+
+      // Write logs
+      for (const id of assetIds) {
+        await tx.activityLog.create({
+          data: {
+            userId,
+            action: "BULK_DELETE_ASSET",
+            entityType: "Asset",
+            entityId: id,
+          }
+        });
+      }
+
+      return updated;
+    });
+
+    return { success: true, message: `Successfully deleted ${result.count} assets.`, data: result };
+  } catch (err: any) {
+    return { success: false, message: err.message || "Failed to bulk delete assets." };
+  }
+}
+
+export async function bulkChangeAssetsDept(assetIds: string[], departmentId: string): Promise<ActionResponse> {
+  try {
+    const userId = await verifyAuthorized();
+    if (!userId) return { success: false, message: "Unauthorized." };
+
+    if (!assetIds || assetIds.length === 0) return { success: false, message: "No assets selected." };
+
+    const result = await db.$transaction(async (tx) => {
+      const updated = await tx.asset.updateMany({
+        where: { id: { in: assetIds } },
+        data: { departmentId: departmentId || null }
+      });
+
+      for (const id of assetIds) {
+        await tx.activityLog.create({
+          data: {
+            userId,
+            action: "BULK_CHANGE_DEPT",
+            entityType: "Asset",
+            entityId: id,
+            newValues: { departmentId }
+          }
+        });
+      }
+
+      return updated;
+    });
+
+    return { success: true, message: `Successfully updated department for ${result.count} assets.`, data: result };
+  } catch (err: any) {
+    return { success: false, message: err.message || "Failed to update assets department." };
+  }
+}
+
+export async function bulkChangeAssetsCategory(assetIds: string[], categoryId: string): Promise<ActionResponse> {
+  try {
+    const userId = await verifyAuthorized();
+    if (!userId) return { success: false, message: "Unauthorized." };
+
+    if (!assetIds || assetIds.length === 0) return { success: false, message: "No assets selected." };
+
+    const result = await db.$transaction(async (tx) => {
+      const updated = await tx.asset.updateMany({
+        where: { id: { in: assetIds } },
+        data: { categoryId }
+      });
+
+      for (const id of assetIds) {
+        await tx.activityLog.create({
+          data: {
+            userId,
+            action: "BULK_CHANGE_CATEGORY",
+            entityType: "Asset",
+            entityId: id,
+            newValues: { categoryId }
+          }
+        });
+      }
+
+      return updated;
+    });
+
+    return { success: true, message: `Successfully updated category for ${result.count} assets.`, data: result };
+  } catch (err: any) {
+    return { success: false, message: err.message || "Failed to update assets category." };
+  }
+}
+
+export async function bulkChangeAssetsStatus(assetIds: string[], status: AssetStatus): Promise<ActionResponse> {
+  try {
+    const userId = await verifyAuthorized();
+    if (!userId) return { success: false, message: "Unauthorized." };
+
+    if (!assetIds || assetIds.length === 0) return { success: false, message: "No assets selected." };
+
+    const result = await db.$transaction(async (tx) => {
+      const updated = await tx.asset.updateMany({
+        where: { id: { in: assetIds } },
+        data: { status }
+      });
+
+      for (const id of assetIds) {
+        await tx.activityLog.create({
+          data: {
+            userId,
+            action: "BULK_CHANGE_STATUS",
+            entityType: "Asset",
+            entityId: id,
+            newValues: { status }
+          }
+        });
+      }
+
+      return updated;
+    });
+
+    return { success: true, message: `Successfully updated status to ${status} for ${result.count} assets.`, data: result };
+  } catch (err: any) {
+    return { success: false, message: err.message || "Failed to update assets status." };
+  }
+}
+
+export async function bulkUpdateAssetsCondition(assetIds: string[], condition: AssetCondition): Promise<ActionResponse> {
+  try {
+    const userId = await verifyAuthorized();
+    if (!userId) return { success: false, message: "Unauthorized." };
+
+    if (!assetIds || assetIds.length === 0) return { success: false, message: "No assets selected." };
+
+    const result = await db.$transaction(async (tx) => {
+      const updated = await tx.asset.updateMany({
+        where: { id: { in: assetIds } },
+        data: { condition }
+      });
+
+      for (const id of assetIds) {
+        await tx.activityLog.create({
+          data: {
+            userId,
+            action: "BULK_UPDATE_CONDITION",
+            entityType: "Asset",
+            entityId: id,
+            newValues: { condition }
+          }
+        });
+      }
+
+      return updated;
+    });
+
+    return { success: true, message: `Successfully updated condition to ${condition} for ${result.count} assets.`, data: result };
+  } catch (err: any) {
+    return { success: false, message: err.message || "Failed to update assets condition." };
+  }
+}
+
+// ----------------------------------------------------
+// CATEGORY DETAILS API
+// ----------------------------------------------------
+
+export async function getCategoryDetails(categoryId: string) {
+  try {
+    const category = await db.assetCategory.findUnique({
+      where: { id: categoryId },
+      include: {
+        assets: {
+          where: { deletedAt: null },
+          include: {
+            department: { select: { name: true } },
+            currentHolder: { select: { name: true } }
+          }
+        }
+      }
+    });
+
+    if (!category || category.deletedAt !== null) return null;
+
+    // Calculations
+    const assetCount = category.assets.length;
+    const totalValuation = category.assets.reduce((sum, a) => sum + Number(a.acquisitionCost.toString()), 0);
+    const underMaintenanceCount = category.assets.filter(a => a.status === AssetStatus.UNDER_MAINTENANCE).length;
+    const allocatedCount = category.assets.filter(a => a.status === AssetStatus.ALLOCATED).length;
+
+    return JSON.parse(
+      JSON.stringify({
+        ...category,
+        assetCount,
+        totalValuation,
+        underMaintenanceCount,
+        allocatedCount,
+        assets: category.assets.map(serializeAsset)
+      })
+    );
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+}
+
+

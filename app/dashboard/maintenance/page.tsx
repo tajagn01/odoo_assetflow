@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getMaintenanceRequests, createMaintenanceRequest, transitionMaintenance } from "@/actions/maintenance";
 import { getAssets } from "@/actions/assets";
+import { getEmployees } from "@/actions/org";
 import { MaintenancePriority, MaintenanceStatus } from "@prisma/client";
 
 export default function MaintenancePage() {
@@ -16,6 +17,7 @@ export default function MaintenancePage() {
   // Data Lists
   const [requests, setRequests] = useState<any[]>([]);
   const [assets, setAssets] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modals & Panels
@@ -30,6 +32,9 @@ export default function MaintenancePage() {
   
   const [techName, setTechName] = useState("");
   const [resolutionNotes, setResolutionNotes] = useState("");
+  const [repairCost, setRepairCost] = useState("");
+  const [repairAttachments, setRepairAttachments] = useState("");
+  const [estimatedCompletionDate, setEstimatedCompletionDate] = useState("");
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -41,12 +46,14 @@ export default function MaintenancePage() {
   const loadRequests = async () => {
     setLoading(true);
     try {
-      const [reqData, assetData] = await Promise.all([
+      const [reqData, assetData, empData] = await Promise.all([
         getMaintenanceRequests(),
         getAssets(),
+        getEmployees(),
       ]);
       setRequests(reqData || []);
       setAssets(assetData.filter((a) => a.status !== "RETIRED") || []);
+      setEmployees(empData || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -138,11 +145,13 @@ export default function MaintenancePage() {
         requestId: assigningRequestId,
         status: MaintenanceStatus.TECHNICIAN_ASSIGNED,
         technicianName: techName,
+        estimatedCompletionDate: estimatedCompletionDate || undefined,
       });
 
       if (res.success) {
         setSuccess(`Technician ${techName} assigned successfully.`);
         setTechName("");
+        setEstimatedCompletionDate("");
         setAssigningRequestId(null);
         await loadRequests();
       } else {
@@ -167,11 +176,15 @@ export default function MaintenancePage() {
         requestId: resolvingRequestId,
         status: MaintenanceStatus.RESOLVED,
         resolutionNotes,
+        repairCost: parseFloat(repairCost) || undefined,
+        repairAttachments: repairAttachments || undefined,
       });
 
       if (res.success) {
         setSuccess("Ticket resolved. Asset returned to Available status.");
         setResolutionNotes("");
+        setRepairCost("");
+        setRepairAttachments("");
         setResolvingRequestId(null);
         await loadRequests();
       } else {
@@ -286,6 +299,15 @@ export default function MaintenancePage() {
                       <div><span className="font-semibold text-zinc-500">Reported By:</span> {req.raisedBy.name}</div>
                       {req.technicianName && (
                         <div><span className="font-semibold text-zinc-500">Technician:</span> {req.technicianName}</div>
+                      )}
+                      {req.estimatedCompletionDate && (
+                        <div><span className="font-semibold text-zinc-500">Est. Done:</span> {new Date(req.estimatedCompletionDate).toLocaleDateString()}</div>
+                      )}
+                      {req.repairCost !== null && req.repairCost !== undefined && (
+                        <div><span className="font-semibold text-zinc-500">Cost:</span> ${req.repairCost}</div>
+                      )}
+                      {req.repairAttachments && (
+                        <div><span className="font-semibold text-zinc-500">Attachments:</span> <a href={req.repairAttachments} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">View files</a></div>
                       )}
                       {req.resolutionNotes && (
                         <div className="text-zinc-500 italic font-medium">Notes: {req.resolutionNotes}</div>
@@ -430,8 +452,31 @@ export default function MaintenancePage() {
 
             <form onSubmit={handleAssignTech} className="space-y-4">
               <div className="space-y-1">
-                <Label htmlFor="tech">Technician Name</Label>
-                <Input id="tech" value={techName} onChange={(e) => setTechName(e.target.value)} placeholder="e.g. John Doe (Contractor)" required />
+                <Label htmlFor="tech">Select Technician</Label>
+                <select
+                  id="tech"
+                  value={techName}
+                  onChange={(e) => setTechName(e.target.value)}
+                  required
+                  className="w-full h-10 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm focus:outline-none cursor-pointer"
+                >
+                  <option value="">Choose technician...</option>
+                  {employees.map((emp) => (
+                    <option key={emp.id} value={emp.name}>
+                      {emp.name} ({emp.role?.replace("_", " ") || "Employee"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="estDone">Estimated Completion Date</Label>
+                <Input 
+                  id="estDone"
+                  type="date"
+                  value={estimatedCompletionDate}
+                  onChange={(e) => setEstimatedCompletionDate(e.target.value)}
+                />
               </div>
 
               <div className="flex gap-2">
@@ -476,10 +521,33 @@ export default function MaintenancePage() {
                   value={resolutionNotes}
                   onChange={(e) => setResolutionNotes(e.target.value)}
                   placeholder="Detail the repairs performed to restore the asset..."
-                  rows={4}
+                  rows={3}
                   required
                   className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm focus:outline-none"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="repCost">Repair Cost ($)</Label>
+                  <Input 
+                    id="repCost"
+                    type="number"
+                    step="0.01"
+                    placeholder="e.g. 150.00"
+                    value={repairCost}
+                    onChange={(e) => setRepairCost(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="repDocs">Attachments (URL/Base64)</Label>
+                  <Input 
+                    id="repDocs"
+                    placeholder="e.g. https://domain.com/invoice.pdf"
+                    value={repairAttachments}
+                    onChange={(e) => setRepairAttachments(e.target.value)}
+                  />
+                </div>
               </div>
 
               <div className="flex gap-2">

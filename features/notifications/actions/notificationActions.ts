@@ -115,3 +115,52 @@ export async function markAllAsReadAction(): Promise<StandardActionResponse> {
     };
   }
 }
+
+/**
+ * Toggle pin status of a notification
+ */
+export async function togglePinAction(id: string, isPinned: boolean): Promise<StandardActionResponse> {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return { success: false, error: { code: "UNAUTHORIZED", message: "Auth required." } };
+    }
+    const data = await NotificationService.togglePin(id, session.user.id, isPinned);
+    return { success: true, data, message: "Pin status toggled." };
+  } catch (err: any) {
+    return { success: false, error: { code: "ERROR", message: err.message } };
+  }
+}
+
+/**
+ * Toggle archive status of a notification
+ */
+export async function toggleArchiveAction(id: string, isArchived: boolean): Promise<StandardActionResponse> {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return { success: false, error: { code: "UNAUTHORIZED", message: "Auth required." } };
+    }
+    const data = await NotificationService.toggleArchive(id, session.user.id, isArchived);
+    return { success: true, data, message: "Archive status toggled." };
+  } catch (err: any) {
+    return { success: false, error: { code: "ERROR", message: err.message } };
+  }
+}
+
+/**
+ * Delete a notification
+ */
+export async function deleteNotificationAction(id: string): Promise<StandardActionResponse> {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return { success: false, error: { code: "UNAUTHORIZED", message: "Auth required." } };
+    }
+    await NotificationService.deleteNotification(id, session.user.id);
+    return { success: true, message: "Notification deleted." };
+  } catch (err: any) {
+    return { success: false, error: { code: "ERROR", message: err.message } };
+  }
+}
+

@@ -2,14 +2,16 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { Plus, Search, Eye, X, Calendar, DollarSign, MapPin, Tag, Wrench, Shield, Check, Info } from "lucide-react";
+import { Plus, Search, Eye, X, Calendar, DollarSign, MapPin, Tag, Wrench, Shield, Check, Info, ArrowRightLeft, Undo2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getAssets, createAsset, getAssetDetails, deleteAsset, importAssetsAction } from "@/actions/assets";
+import { getAssets, createAsset, getAssetDetails, deleteAsset, importAssetsAction, bulkDeleteAssets, bulkChangeAssetsDept, bulkChangeAssetsCategory, bulkChangeAssetsStatus, bulkUpdateAssetsCondition } from "@/actions/assets";
 import { getCategories, getDepartments } from "@/actions/org";
+import { allocateAsset, returnAsset, requestAssetTransfer, getTransferTargets } from "@/actions/allocations";
 import { AssetStatus, AssetCondition } from "@prisma/client";
 import { exportToCSV, parseCSV } from "@/utils/csv";
+import Link from "next/link";
 
 export default function AssetsPage() {
   const { data: session } = useSession();
@@ -33,6 +35,178 @@ export default function AssetsPage() {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
 
+  // Bulk Operations State & Actions
+  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
+  const [bulkActionSubmitting, setBulkActionSubmitting] = useState(false);
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedAssetIds(assets.map((a) => a.id));
+    } else {
+      setSelectedAssetIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedAssetIds((prev) => [...prev, id]);
+    } else {
+      setSelectedAssetIds((prev) => prev.filter((item) => item !== id));
+    }
+  };
+
+  const executeBulkDelete = async () => {
+    if (!confirm(`Are you sure you want to delete ${selectedAssetIds.length} assets? This action will fail and rollback if any selected assets are currently allocated.`)) return;
+    setBulkActionSubmitting(true);
+    setError("");
+    setSuccess("");
+    try {
+      const res = await bulkDeleteAssets(selectedAssetIds);
+      if (res.success) {
+        setSuccess(res.message || "Bulk assets deleted.");
+        setSelectedAssetIds([]);
+        await loadAssets();
+      } else {
+        setError(res.message || "Bulk delete failed.");
+      }
+    } catch (err) {
+      setError("Bulk delete execution error.");
+    } finally {
+      setBulkActionSubmitting(false);
+    }
+  };
+
+  const executeBulkChangeDept = async (deptId: string) => {
+    if (!deptId) return;
+    setBulkActionSubmitting(true);
+    setError("");
+    setSuccess("");
+    try {
+      const res = await bulkChangeAssetsDept(selectedAssetIds, deptId);
+      if (res.success) {
+        setSuccess(res.message || "Bulk department updated.");
+        setSelectedAssetIds([]);
+        await loadAssets();
+      } else {
+        setError(res.message || "Failed to update department.");
+      }
+    } catch (err) {
+      setError("Bulk department update error.");
+    } finally {
+      setBulkActionSubmitting(false);
+    }
+  };
+
+  const executeBulkChangeCategory = async (catId: string) => {
+    if (!catId) return;
+    setBulkActionSubmitting(true);
+    setError("");
+    setSuccess("");
+    try {
+      const res = await bulkChangeAssetsCategory(selectedAssetIds, catId);
+      if (res.success) {
+        setSuccess(res.message || "Bulk category updated.");
+        setSelectedAssetIds([]);
+        await loadAssets();
+      } else {
+        setError(res.message || "Failed to update category.");
+      }
+    } catch (err) {
+      setError("Bulk category update error.");
+    } finally {
+      setBulkActionSubmitting(false);
+    }
+  };
+
+  const executeBulkChangeStatus = async (statusVal: any) => {
+    if (!statusVal) return;
+    setBulkActionSubmitting(true);
+    setError("");
+    setSuccess("");
+    try {
+      const res = await bulkChangeAssetsStatus(selectedAssetIds, statusVal);
+      if (res.success) {
+        setSuccess(res.message || "Bulk status updated.");
+        setSelectedAssetIds([]);
+        await loadAssets();
+      } else {
+        setError(res.message || "Failed to update status.");
+      }
+    } catch (err) {
+      setError("Bulk status update error.");
+    } finally {
+      setBulkActionSubmitting(false);
+    }
+  };
+
+  const executeBulkUpdateCondition = async (condVal: any) => {
+    if (!condVal) return;
+    setBulkActionSubmitting(true);
+    setError("");
+    setSuccess("");
+    try {
+      const res = await bulkUpdateAssetsCondition(selectedAssetIds, condVal);
+      if (res.success) {
+        setSuccess(res.message || "Bulk condition updated.");
+        setSelectedAssetIds([]);
+        await loadAssets();
+      } else {
+        setError(res.message || "Failed to update condition.");
+      }
+    } catch (err) {
+      setError("Bulk condition update error.");
+    } finally {
+      setBulkActionSubmitting(false);
+    }
+  };
+
+  const executeBulkExport = () => {
+    const selectedList = assets.filter((a) => selectedAssetIds.includes(a.id));
+    const csvRows = selectedList.map((a) => ({
+      "Asset Tag": a.tag,
+      "Name": a.name,
+      "Category": a.category.name,
+      "Status": a.status,
+      "Condition": a.condition,
+      "Location": a.location,
+      "Cost": a.acquisitionCost,
+      "Acquisition Date": new Date(a.acquisitionDate).toLocaleDateString()
+    }));
+    exportToCSV(csvRows, `Bulk_Assets_Export_${new Date().toISOString().slice(0, 10)}`);
+  };
+
+  const executeBulkPrintLabels = () => {
+    const selectedList = assets.filter((a) => selectedAssetIds.includes(a.id));
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Print Asset Labels</title>
+          <style>
+            body { font-family: monospace; padding: 20px; }
+            .label { border: 2px dashed black; padding: 15px; margin: 10px; display: inline-block; width: 220px; }
+            .title { font-weight: bold; font-size: 14px; }
+            .tag { font-size: 16px; font-weight: bold; margin-top: 5px; }
+          </style>
+        </head>
+        <body>
+          <h2>AssetFlow Bulk Labels</h2>
+          ${selectedList.map(a => `
+            <div class="label">
+              <div class="title">${a.name}</div>
+              <div class="tag">${a.tag}</div>
+              <div>Status: ${a.status}</div>
+              <div>Condition: ${a.condition}</div>
+            </div>
+          `).join("")}
+          <script>window.print();</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   // Add Asset Form States
   const [name, setName] = useState("");
   const [formCategoryId, setFormCategoryId] = useState("");
@@ -49,7 +223,19 @@ export default function AssetsPage() {
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Action Form States
+  const [transferTargets, setTransferTargets] = useState<{ id: string; name: string; email: string; department: string | null }[]>([]);
+  const [allocTargetUserId, setAllocTargetUserId] = useState("");
+  const [allocReturnDate, setAllocReturnDate] = useState("");
+  const [returnCondition, setReturnCondition] = useState<AssetCondition>("GOOD");
+  const [returnNotes, setReturnNotes] = useState("");
+  const [transferTargetUserId, setTransferTargetUserId] = useState("");
+  const [actionSubmitting, setActionSubmitting] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [actionSuccess, setActionSuccess] = useState("");
+
   const isManagerOrAdmin = session && ["ADMIN", "ASSET_MANAGER"].includes(session.user.role);
+  const isEmployeeOrDeptHead = session && ["EMPLOYEE", "DEPARTMENT_HEAD"].includes(session.user.role);
 
   // Load Lists
   const loadAssets = async () => {
@@ -76,9 +262,14 @@ export default function AssetsPage() {
   useEffect(() => {
     const loadMaster = async () => {
       try {
-        const [cats, depts] = await Promise.all([getCategories(), getDepartments()]);
+        const [cats, depts, targets] = await Promise.all([
+          getCategories(),
+          getDepartments(),
+          getTransferTargets(),
+        ]);
         setCategories(cats || []);
         setDepartments(depts || []);
+        setTransferTargets(targets || []);
       } catch (err) {
         console.error(err);
       }
@@ -181,6 +372,107 @@ export default function AssetsPage() {
       }
     } catch (err) {
       setError("Failed to retire asset.");
+    }
+  };
+
+  // ---- Action Handlers for Allocation, Return, Transfer ----
+  const resetActionState = () => {
+    setActionError("");
+    setActionSuccess("");
+    setAllocTargetUserId("");
+    setAllocReturnDate("");
+    setReturnCondition("GOOD");
+    setReturnNotes("");
+    setTransferTargetUserId("");
+  };
+
+  const handleAllocateAsset = async () => {
+    if (!detailedAsset || !allocTargetUserId) {
+      setActionError("Please select a target employee.");
+      return;
+    }
+    setActionSubmitting(true);
+    setActionError("");
+    setActionSuccess("");
+    try {
+      const res = await allocateAsset({
+        assetId: detailedAsset.id,
+        targetUserId: allocTargetUserId,
+        expectedReturnDate: allocReturnDate || null,
+      });
+      if (res.success) {
+        setActionSuccess(res.message || "Asset allocated successfully.");
+        resetActionState();
+        setActionSuccess(res.message || "Asset allocated successfully.");
+        await loadAssets();
+        // Reload detail
+        const details = await getAssetDetails(detailedAsset.id);
+        setDetailedAsset(details);
+      } else {
+        setActionError(res.message || "Failed to allocate.");
+      }
+    } catch (err: any) {
+      setActionError(err.message || "Allocation failed.");
+    } finally {
+      setActionSubmitting(false);
+    }
+  };
+
+  const handleReturnAsset = async () => {
+    if (!detailedAsset) return;
+    setActionSubmitting(true);
+    setActionError("");
+    setActionSuccess("");
+    try {
+      const res = await returnAsset({
+        assetId: detailedAsset.id,
+        conditionOnReturn: returnCondition,
+        checkInNotes: returnNotes || undefined,
+      });
+      if (res.success) {
+        setActionSuccess(res.message || "Asset returned successfully.");
+        resetActionState();
+        setActionSuccess(res.message || "Asset returned.");
+        await loadAssets();
+        const details = await getAssetDetails(detailedAsset.id);
+        setDetailedAsset(details);
+      } else {
+        setActionError(res.message || "Failed to return asset.");
+      }
+    } catch (err: any) {
+      setActionError(err.message || "Return failed.");
+    } finally {
+      setActionSubmitting(false);
+    }
+  };
+
+  const handleTransferAsset = async () => {
+    if (!detailedAsset || !transferTargetUserId) {
+      setActionError("Please select a transfer recipient.");
+      return;
+    }
+    setActionSubmitting(true);
+    setActionError("");
+    setActionSuccess("");
+    try {
+      const res = await requestAssetTransfer({
+        assetId: detailedAsset.id,
+        targetUserId: transferTargetUserId,
+      });
+      if (res.success) {
+        setActionSuccess(res.message || "Transfer processed.");
+        resetActionState();
+        setActionSuccess(res.message || "Transfer processed.");
+        await loadAssets();
+        const details = await getAssetDetails(detailedAsset.id);
+        setDetailedAsset(details);
+      } else {
+        setActionError(res.message || "Transfer failed.");
+      }
+    } catch (err: any) {
+      setActionError(err.message || "Transfer failed.");
+    } finally {
+      setActionSubmitting(false);
     }
   };
 
@@ -356,6 +648,90 @@ export default function AssetsPage() {
         
         {/* Left Side: Asset Table list */}
         <div className="lg:col-span-2 rounded-xl border border-zinc-200 bg-white overflow-hidden shadow-sm">
+          {selectedAssetIds.length > 0 && (
+            <div className="p-3 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between text-xs font-bold gap-4 flex-wrap">
+              <div className="text-zinc-700">
+                {selectedAssetIds.length} Assets Selected
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <select
+                  onChange={(e: any) => {
+                    executeBulkChangeDept(e.target.value);
+                    e.target.value = "";
+                  }}
+                  className="h-8 rounded border border-zinc-200 bg-white text-[11px] px-1 cursor-pointer"
+                >
+                  <option value="">Move Department...</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+
+                <select
+                  onChange={(e: any) => {
+                    executeBulkChangeCategory(e.target.value);
+                    e.target.value = "";
+                  }}
+                  className="h-8 rounded border border-zinc-200 bg-white text-[11px] px-1 cursor-pointer"
+                >
+                  <option value="">Move Category...</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+
+                <select
+                  onChange={(e: any) => {
+                    executeBulkChangeStatus(e.target.value);
+                    e.target.value = "";
+                  }}
+                  className="h-8 rounded border border-zinc-200 bg-white text-[11px] px-1 cursor-pointer"
+                >
+                  <option value="">Change Status...</option>
+                  <option value="AVAILABLE">Available</option>
+                  <option value="UNDER_MAINTENANCE">Under Maintenance</option>
+                  <option value="RETIRED">Retired</option>
+                  <option value="LOST">Lost</option>
+                </select>
+
+                <select
+                  onChange={(e: any) => {
+                    executeBulkUpdateCondition(e.target.value);
+                    e.target.value = "";
+                  }}
+                  className="h-8 rounded border border-zinc-200 bg-white text-[11px] px-1 cursor-pointer"
+                >
+                  <option value="">Update Condition...</option>
+                  <option value="NEW">New</option>
+                  <option value="GOOD">Good</option>
+                  <option value="FAIR">Fair</option>
+                  <option value="POOR">Poor</option>
+                </select>
+
+                <button
+                  onClick={executeBulkExport}
+                  className="h-8 border border-zinc-200 hover:bg-zinc-50 rounded bg-white text-[11px] px-2.5 cursor-pointer font-bold"
+                >
+                  Export
+                </button>
+
+                <button
+                  onClick={executeBulkPrintLabels}
+                  className="h-8 border border-zinc-200 hover:bg-zinc-50 rounded bg-white text-[11px] px-2.5 cursor-pointer font-bold"
+                >
+                  Labels
+                </button>
+
+                <button
+                  onClick={executeBulkDelete}
+                  className="h-8 bg-red-600 hover:bg-red-700 text-white rounded text-[11px] px-2.5 cursor-pointer font-bold"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="flex h-64 items-center justify-center">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" />
@@ -364,6 +740,14 @@ export default function AssetsPage() {
             <table className="w-full border-collapse text-left text-sm">
               <thead className="bg-zinc-50 text-xs font-bold text-zinc-500 uppercase border-b border-zinc-200">
                 <tr>
+                  <th className="px-6 py-3 w-10">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedAssetIds.length === assets.length && assets.length > 0} 
+                      onChange={(e) => handleSelectAll(e.target.checked)} 
+                      className="rounded border-zinc-300 focus:ring-zinc-950 cursor-pointer"
+                    />
+                  </th>
                   <th className="px-6 py-3">Tag & Name</th>
                   <th className="px-6 py-3">Category</th>
                   <th className="px-6 py-3">Status</th>
@@ -374,7 +758,7 @@ export default function AssetsPage() {
               <tbody className="divide-y divide-zinc-100">
                 {assets.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-zinc-400">
+                    <td colSpan={6} className="px-6 py-8 text-center text-zinc-400">
                       No assets found matching filters.
                     </td>
                   </tr>
@@ -387,6 +771,14 @@ export default function AssetsPage() {
                       }`}
                       onClick={() => setSelectedAssetId(asset.id)}
                     >
+                      <td className="px-6 py-4 w-10" onClick={(e) => e.stopPropagation()}>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedAssetIds.includes(asset.id)} 
+                          onChange={(e) => handleSelectOne(asset.id, e.target.checked)} 
+                          className="rounded border-zinc-300 focus:ring-zinc-950 cursor-pointer"
+                        />
+                      </td>
                       <td className="px-6 py-4">
                         <div className="font-bold text-zinc-950 text-xs font-mono">{asset.tag}</div>
                         <div className="text-zinc-700 text-sm mt-0.5">{asset.name}</div>
@@ -409,9 +801,9 @@ export default function AssetsPage() {
                       </td>
                       <td className="px-6 py-4 text-zinc-500 text-xs">{asset.location}</td>
                       <td className="px-6 py-4 text-right">
-                        <button className="text-zinc-600 hover:text-zinc-950 p-1 cursor-pointer">
+                        <Link href={`/dashboard/assets/${asset.id}`} className="text-zinc-600 hover:text-zinc-950 p-1 cursor-pointer">
                           <Eye className="h-4 w-4 inline" />
-                        </button>
+                        </Link>
                       </td>
                     </tr>
                   ))
@@ -534,6 +926,177 @@ export default function AssetsPage() {
                   )}
                 </div>
               </div>
+
+              {/* ====== ACTION FORMS ====== */}
+              {actionError && (
+                <div className="rounded-lg bg-red-50 p-3 text-xs font-semibold text-red-600 border border-red-100">
+                  {actionError}
+                </div>
+              )}
+              {actionSuccess && (
+                <div className="rounded-lg bg-emerald-50 p-3 text-xs font-semibold text-emerald-700 border border-emerald-100">
+                  {actionSuccess}
+                </div>
+              )}
+
+              {/* ALLOCATE ASSET — AVAILABLE + Admin/Manager */}
+              {isManagerOrAdmin && detailedAsset.status === "AVAILABLE" && (
+                <div className="space-y-3 border-t border-zinc-100 pt-4">
+                  <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center">
+                    <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Allocate Asset
+                  </h3>
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="allocTarget" className="text-[10px]">Assign To Employee</Label>
+                      <select
+                        id="allocTarget"
+                        value={allocTargetUserId}
+                        onChange={(e) => setAllocTargetUserId(e.target.value)}
+                        className="w-full h-9 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 cursor-pointer"
+                      >
+                        <option value="">Select employee...</option>
+                        {transferTargets.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name} — {u.email}{u.department ? ` (${u.department})` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="allocReturn" className="text-[10px]">Expected Return Date (optional)</Label>
+                      <Input
+                        id="allocReturn"
+                        type="date"
+                        value={allocReturnDate}
+                        onChange={(e) => setAllocReturnDate(e.target.value)}
+                        className="h-9 text-xs"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleAllocateAsset}
+                      disabled={actionSubmitting || !allocTargetUserId}
+                      className="w-full bg-zinc-950 hover:bg-zinc-900 text-white rounded-lg text-xs py-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {actionSubmitting ? "Allocating..." : "Confirm Allocation"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* RETURN ASSET — ALLOCATED + Admin/Manager */}
+              {isManagerOrAdmin && detailedAsset.status === "ALLOCATED" && (
+                <div className="space-y-3 border-t border-zinc-100 pt-4">
+                  <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center">
+                    <Undo2 className="h-3.5 w-3.5 mr-1.5" /> Process Return
+                  </h3>
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="returnCond" className="text-[10px]">Return Condition</Label>
+                      <select
+                        id="returnCond"
+                        value={returnCondition}
+                        onChange={(e) => setReturnCondition(e.target.value as AssetCondition)}
+                        className="w-full h-9 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 cursor-pointer"
+                      >
+                        <option value="NEW">New</option>
+                        <option value="GOOD">Good</option>
+                        <option value="FAIR">Fair</option>
+                        <option value="POOR">Poor</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="returnNotes" className="text-[10px]">Check-in Notes (optional)</Label>
+                      <textarea
+                        id="returnNotes"
+                        value={returnNotes}
+                        onChange={(e) => setReturnNotes(e.target.value)}
+                        placeholder="Cosmetic damage, missing accessories, etc."
+                        rows={2}
+                        className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 resize-none"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleReturnAsset}
+                      disabled={actionSubmitting}
+                      className="w-full bg-zinc-950 hover:bg-zinc-900 text-white rounded-lg text-xs py-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {actionSubmitting ? "Processing..." : "Confirm Return"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* DIRECT TRANSFER — ALLOCATED + Admin/Manager */}
+              {isManagerOrAdmin && detailedAsset.status === "ALLOCATED" && (
+                <div className="space-y-3 border-t border-zinc-100 pt-4">
+                  <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center">
+                    <ArrowRightLeft className="h-3.5 w-3.5 mr-1.5" /> Direct Transfer
+                  </h3>
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="directTransferTarget" className="text-[10px]">Transfer To Employee</Label>
+                      <select
+                        id="directTransferTarget"
+                        value={transferTargetUserId}
+                        onChange={(e) => setTransferTargetUserId(e.target.value)}
+                        className="w-full h-9 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 cursor-pointer"
+                      >
+                        <option value="">Select recipient...</option>
+                        {transferTargets.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name} — {u.email}{u.department ? ` (${u.department})` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <Button
+                      onClick={handleTransferAsset}
+                      disabled={actionSubmitting || !transferTargetUserId}
+                      className="w-full border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-900 rounded-lg text-xs py-2 cursor-pointer disabled:opacity-50 font-bold"
+                    >
+                      {actionSubmitting ? "Transferring..." : "Execute Transfer"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* REQUEST TRANSFER — ALLOCATED + Employee/DeptHead */}
+              {isEmployeeOrDeptHead && detailedAsset.status === "ALLOCATED" && (
+                <div className="space-y-3 border-t border-zinc-100 pt-4">
+                  <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center">
+                    <ArrowRightLeft className="h-3.5 w-3.5 mr-1.5" /> Request Handover / Transfer
+                  </h3>
+                  <p className="text-[10px] text-zinc-500">
+                    Submit a transfer request to management. Once approved, the asset custody will move to the selected recipient.
+                  </p>
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="reqTransferTarget" className="text-[10px]">Transfer To</Label>
+                      <select
+                        id="reqTransferTarget"
+                        value={transferTargetUserId}
+                        onChange={(e) => setTransferTargetUserId(e.target.value)}
+                        className="w-full h-9 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 cursor-pointer"
+                      >
+                        <option value="">Select recipient...</option>
+                        {transferTargets.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name} — {u.email}{u.department ? ` (${u.department})` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <Button
+                      onClick={handleTransferAsset}
+                      disabled={actionSubmitting || !transferTargetUserId}
+                      className="w-full bg-zinc-950 hover:bg-zinc-900 text-white rounded-lg text-xs py-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {actionSubmitting ? "Submitting..." : "Submit Transfer Request"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
             </div>
           ) : null}
         </div>

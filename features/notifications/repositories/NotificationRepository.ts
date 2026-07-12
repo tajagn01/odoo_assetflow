@@ -54,4 +54,48 @@ export class NotificationRepository {
       },
     });
   }
+
+  /**
+   * Update the pinned status by writing to metadata
+   */
+  static async togglePin(id: string, userId: string, isPinned: boolean): Promise<Notification> {
+    const existing = await db.notification.findFirst({ where: { id, userId } });
+    const existingMeta = (existing?.metadata as Record<string, any>) || {};
+    return await db.notification.update({
+      where: { id, userId },
+      data: {
+        metadata: {
+          ...existingMeta,
+          isPinned,
+        },
+      },
+    });
+  }
+
+  /**
+   * Update the archived status by writing to metadata
+   */
+  static async toggleArchive(id: string, userId: string, isArchived: boolean): Promise<Notification> {
+    const existing = await db.notification.findFirst({ where: { id, userId } });
+    const existingMeta = (existing?.metadata as Record<string, any>) || {};
+    return await db.notification.update({
+      where: { id, userId },
+      data: {
+        metadata: {
+          ...existingMeta,
+          isArchived,
+        },
+      },
+    });
+  }
+
+  /**
+   * Hard delete a notification from the user's list
+   */
+  static async deleteNotification(id: string, userId: string): Promise<Notification> {
+    return await db.notification.delete({
+      where: { id, userId },
+    });
+  }
 }
+

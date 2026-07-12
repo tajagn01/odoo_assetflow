@@ -393,3 +393,156 @@ export async function updateEmployee(
     return { success: false, message: "Failed to update employee." };
   }
 }
+
+// Fetch full details of an individual employee for directory profiling
+export async function getEmployeeDetails(employeeId: string) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) return null;
+
+    // Block normal Employees from accessing other profile details
+    if (session.user.role === "EMPLOYEE" && session.user.id !== employeeId) {
+      return null;
+    }
+
+    const employee = await db.user.findUnique({
+      where: { id: employeeId },
+      include: {
+        department: {
+          include: {
+            manager: { select: { id: true, name: true, email: true } },
+          },
+        },
+        heldAssets: {
+          where: { deletedAt: null },
+          include: { category: true },
+        },
+        bookings: {
+          include: { asset: true },
+          orderBy: { startTime: "desc" },
+        },
+        maintenanceReqs: {
+          include: { asset: true },
+          orderBy: { createdAt: "desc" },
+        },
+        auditedCycles: {
+          include: { auditCycle: true },
+        },
+        activityLogs: {
+          take: 20,
+          orderBy: { timestamp: "desc" },
+        },
+      },
+    });
+
+    if (!employee) return null;
+
+    // Format fields (cost, dates) for serializability
+    const formattedAssets = employee.heldAssets.map((asset) => ({
+      ...asset,
+      acquisitionCost: Number(asset.acquisitionCost.toString()),
+    }));
+
+    return JSON.parse(
+      JSON.stringify({
+        ...employee,
+        heldAssets: formattedAssets,
+      })
+    );
+  } catch (error) {
+    console.error("Failed to fetch employee details:", error);
+    return null;
+  }
+}
+
+// Fetch detailed profile for an individual department
+export async function getDepartmentDetails(departmentId: string) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) return null;
+
+    // Fetch department overview
+    const dept = await db.department.findUnique({
+      where: { id: departmentId },
+      include: {
+        parent: { select: { id: true, name: true } },
+        manager: { select: { id: true, name: true, email: true } },
+        subDepartments: { where: { deletedAt: null } },
+        users: {
+          where: { status: "ACTIVE" },
+          select: { id: true, name: true, email: true, role: true, status: true },
+        },
+        assets: {
+          where: { deletedAt: null },
+          include: { category: true, currentHolder: { select: { name: true } } },
+        },
+      },
+    });
+
+    if (!dept || dept.deletedAt !== null) return null;
+
+    const userIds = dept.users.map((u) => u.id);
+    const assetIds = dept.assets.map((a) => a.id);
+
+    // Fetch Bookings for department assets
+    const bookings = await db.resourceBooking.findMany({
+      where: { assetId: { in: assetIds } },
+      include: {
+        user: { select: { name: true } },
+        asset: { select: { name: true, tag: true } },
+      },
+      orderBy: { startTime: "desc" },
+    });
+
+    // Fetch Maintenance Requests raised by department users or for department assets
+    const maintenanceReqs = await db.maintenanceRequest.findMany({
+      where: {
+        OR: [
+          { raisedById: { in: userIds } },
+          { assetId: { in: assetIds } },
+        ],
+      },
+      include: {
+        raisedBy: { select: { name: true } },
+        asset: { select: { name: true, tag: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Fetch Activity Logs of department members
+    const activityLogs = await db.activityLog.findMany({
+      where: { userId: { in: userIds } },
+      include: { user: { select: { name: true } } },
+      take: 20,
+      orderBy: { timestamp: "desc" },
+    });
+
+    // Format costs for serialization safety
+    const formattedAssets = dept.assets.map((asset) => ({
+      ...asset,
+      acquisitionCost: Number(asset.acquisitionCost.toString()),
+    }));
+
+    return JSON.parse(
+      JSON.stringify({
+        id: dept.id,
+        name: dept.name,
+        status: dept.status,
+        createdAt: dept.createdAt,
+        parent: dept.parent,
+        manager: dept.manager,
+        subDepartments: dept.subDepartments,
+        users: dept.users,
+        assets: formattedAssets,
+        bookings,
+        maintenanceReqs,
+        activityLogs,
+      })
+    );
+  } catch (error) {
+    console.error("Failed to fetch department details:", error);
+    return null;
+  }
+}
+
+
