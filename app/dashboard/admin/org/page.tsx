@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Role } from "@prisma/client";
-import { Plus, Trash2, Edit2, ShieldAlert, Award, UserMinus, ToggleLeft, UserCheck } from "lucide-react";
+import { Plus, Trash2, Edit2, ShieldAlert, Award, UserMinus, ToggleLeft, UserCheck, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,6 +58,8 @@ export default function OrgSettingsPage() {
   const [departments, setDepartments] = useState<DepartmentType[]>([]);
   const [categories, setCategories] = useState<CategoryType[]>([]);
   const [employees, setEmployees] = useState<EmployeeType[]>([]);
+  const [employeeSearch, setEmployeeSearch] = useState("");
+  const [employeeDeptFilter, setEmployeeDeptFilter] = useState("");
   const [loading, setLoading] = useState(true);
 
   // Form States
@@ -562,73 +564,110 @@ export default function OrgSettingsPage() {
 
           {/* TAB 3: EMPLOYEE DIRECTORY */}
           {activeTab === "employees" && (
-            <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
-              <table className="w-full border-collapse text-left text-sm">
-                <thead className="bg-zinc-50 text-xs font-bold text-zinc-500 uppercase border-b border-zinc-200">
-                  <tr>
-                    <th className="px-6 py-3">Employee Name</th>
-                    <th className="px-6 py-3">Email Address</th>
-                    <th className="px-6 py-3">Assigned Department</th>
-                    <th className="px-6 py-3">Current RBAC Role</th>
-                    <th className="px-6 py-3">Status</th>
-                    <th className="px-6 py-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100">
-                  {employees.map((emp) => {
-                    const isSelf = emp.id === session?.user?.id;
-                    return (
-                      <tr key={emp.id} className="hover:bg-zinc-50/50">
-                        <td className="px-6 py-4 font-bold text-zinc-950">
-                          {emp.name} {isSelf && <span className="text-[10px] bg-zinc-100 text-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 ml-1">You</span>}
-                        </td>
-                        <td className="px-6 py-4 text-zinc-500">{emp.email}</td>
-                        <td className="px-6 py-4 text-zinc-700">{emp.department?.name || <span className="text-xs text-zinc-400 italic">Unassigned</span>}</td>
-                        <td className="px-6 py-4">
-                          <select
-                            value={emp.role}
-                            onChange={(e) => handleRoleChange(emp.id, e.target.value as Role)}
-                            disabled={isSelf}
-                            className="h-8 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-zinc-950 disabled:opacity-50"
-                          >
-                            <option value={Role.EMPLOYEE}>Employee</option>
-                            <option value={Role.DEPARTMENT_HEAD}>Department Head</option>
-                            <option value={Role.ASSET_MANAGER}>Asset Manager</option>
-                            <option value={Role.ADMIN}>Admin</option>
-                          </select>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold border ${
-                              emp.status === "ACTIVE"
-                                ? "bg-zinc-50 text-zinc-950 border-zinc-200"
-                                : "bg-red-50 text-red-700 border-red-100"
-                            }`}
-                          >
-                            {emp.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => handleStatusToggle(emp)}
-                            disabled={isSelf}
-                            className={`p-1 cursor-pointer disabled:opacity-40 ${
-                              emp.status === "ACTIVE" ? "text-red-500 hover:text-red-700" : "text-zinc-600 hover:text-zinc-950"
-                            }`}
-                            title={emp.status === "ACTIVE" ? "Deactivate employee" : "Activate employee"}
-                          >
-                            {emp.status === "ACTIVE" ? (
-                              <UserMinus className="h-4 w-4 inline" />
-                            ) : (
-                              <UserCheck className="h-4 w-4 inline" />
-                            )}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="space-y-4">
+              {/* Directory Filter controls */}
+              <div className="flex flex-col sm:flex-row gap-4 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
+                  <input
+                    type="text"
+                    placeholder="Search employees by name or email..."
+                    value={employeeSearch}
+                    onChange={(e) => setEmployeeSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-white border border-zinc-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-zinc-950 h-10"
+                  />
+                </div>
+                <select
+                  value={employeeDeptFilter}
+                  onChange={(e) => setEmployeeDeptFilter(e.target.value)}
+                  className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-zinc-950 h-10"
+                >
+                  <option value="">All Departments</option>
+                  {departments.map((dept) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden shadow-sm">
+                <table className="w-full border-collapse text-left text-sm">
+                  <thead className="bg-zinc-50 text-xs font-bold text-zinc-500 uppercase border-b border-zinc-200">
+                    <tr>
+                      <th className="px-6 py-3">Employee Name</th>
+                      <th className="px-6 py-3">Email Address</th>
+                      <th className="px-6 py-3">Assigned Department</th>
+                      <th className="px-6 py-3">Current RBAC Role</th>
+                      <th className="px-6 py-3">Status</th>
+                      <th className="px-6 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100">
+                    {employees
+                      .filter((emp) => {
+                        const matchesSearch =
+                          emp.name.toLowerCase().includes(employeeSearch.toLowerCase()) ||
+                          emp.email.toLowerCase().includes(employeeSearch.toLowerCase());
+                        const matchesDept =
+                          !employeeDeptFilter || emp.departmentId === employeeDeptFilter;
+                        return matchesSearch && matchesDept;
+                      })
+                      .map((emp) => {
+                        const isSelf = emp.id === session?.user?.id;
+                        return (
+                          <tr key={emp.id} className="hover:bg-zinc-50/50">
+                            <td className="px-6 py-4 font-bold text-zinc-950">
+                              {emp.name} {isSelf && <span className="text-[10px] bg-zinc-100 text-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 ml-1">You</span>}
+                            </td>
+                            <td className="px-6 py-4 text-zinc-500">{emp.email}</td>
+                            <td className="px-6 py-4 text-zinc-700">{emp.department?.name || <span className="text-xs text-zinc-400 italic">Unassigned</span>}</td>
+                            <td className="px-6 py-4">
+                              <select
+                                value={emp.role}
+                                onChange={(e) => handleRoleChange(emp.id, e.target.value as Role)}
+                                disabled={isSelf}
+                                className="h-8 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-zinc-950 disabled:opacity-50"
+                              >
+                                <option value={Role.EMPLOYEE}>Employee</option>
+                                <option value={Role.DEPARTMENT_HEAD}>Department Head</option>
+                                <option value={Role.ASSET_MANAGER}>Asset Manager</option>
+                                <option value={Role.ADMIN}>Admin</option>
+                              </select>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold border ${
+                                  emp.status === "ACTIVE"
+                                    ? "bg-zinc-50 text-zinc-950 border-zinc-200"
+                                    : "bg-red-50 text-red-700 border-red-100"
+                                }`}
+                              >
+                                {emp.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <button
+                                onClick={() => handleStatusToggle(emp)}
+                                disabled={isSelf}
+                                className={`p-1 cursor-pointer disabled:opacity-40 ${
+                                  emp.status === "ACTIVE" ? "text-red-500 hover:text-red-700" : "text-zinc-600 hover:text-zinc-950"
+                                }`}
+                                title={emp.status === "ACTIVE" ? "Deactivate employee" : "Activate employee"}
+                              >
+                                {emp.status === "ACTIVE" ? (
+                                  <UserMinus className="h-4 w-4 inline" />
+                                ) : (
+                                  <UserCheck className="h-4 w-4 inline" />
+                                )}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

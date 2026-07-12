@@ -90,7 +90,7 @@ export async function allocateAsset(data: {
       });
 
       return allocation;
-    });
+    }, { maxWait: 15000, timeout: 20000 });
 
     return { success: true, message: "Asset allocated successfully.", data: result };
   } catch (error: any) {
@@ -158,7 +158,7 @@ export async function returnAsset(data: {
       });
 
       return asset;
-    });
+    }, { maxWait: 15000, timeout: 20000 });
 
     return { success: true, message: "Asset returned to directory. Status set to Available.", data: serializeAsset(result) };
   } catch (error: any) {
@@ -233,7 +233,7 @@ export async function requestAssetTransfer(data: {
         });
 
         return newAlloc;
-      });
+      }, { maxWait: 15000, timeout: 20000 });
 
       return { success: true, message: "Asset transfer approved and executed.", data: result };
     } else {

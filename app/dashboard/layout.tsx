@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import Navbar from "@/components/layout/navbar";
+import CommandPalette from "@/components/layout/CommandPalette";
 
 export default async function DashboardLayout({
   children,
@@ -33,6 +34,9 @@ export default async function DashboardLayout({
           </div>
         </main>
       </div>
+
+      {/* Global Keyboard command palette (⌘+K / Ctrl+K) */}
+      <CommandPalette role={session.user.role} />
     </div>
   );
 }

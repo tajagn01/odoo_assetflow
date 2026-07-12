@@ -6,10 +6,10 @@ import { Plus, Search, Eye, X, Calendar, DollarSign, MapPin, Tag, Wrench, Shield
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getAssets, createAsset, getAssetDetails, deleteAsset } from "@/actions/assets";
+import { getAssets, createAsset, getAssetDetails, deleteAsset, importAssetsAction } from "@/actions/assets";
 import { getCategories, getDepartments } from "@/actions/org";
 import { AssetStatus, AssetCondition } from "@prisma/client";
-import { exportToCSV } from "@/utils/csv";
+import { exportToCSV, parseCSV } from "@/utils/csv";
 
 export default function AssetsPage() {
   const { data: session } = useSession();
@@ -200,6 +200,61 @@ export default function AssetsPage() {
     exportToCSV(exportData, "Asset_Directory");
   };
 
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError("");
+    setSuccess("");
+    setLoading(true);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const text = event.target?.result as string;
+          const parsed = parseCSV(text);
+          if (parsed.length === 0) {
+            setError("No valid records found in CSV file.");
+            setLoading(false);
+            return;
+          }
+
+          // Format rows with column fallback mappings
+          const formatted = parsed.map((row) => ({
+            name: row.Name || row.name || "Unnamed Asset",
+            categoryId: row.CategoryId || row.categoryId || (categories.length > 0 ? categories[0].id : ""),
+            serialNumber: row.SerialNumber || row.serialNumber || Math.random().toString(36).substring(2, 10).toUpperCase(),
+            acquisitionDate: row.AcquisitionDate || row.acquisitionDate || new Date().toISOString().slice(0, 10),
+            acquisitionCost: Number(row.AcquisitionCost || row.acquisitionCost) || 0,
+            condition: (row.Condition || row.condition || "NEW") as any,
+            location: row.Location || row.location || "Warehouse",
+            isSharedResource: String(row.IsSharedResource || row.isSharedResource).toLowerCase() === "true",
+            departmentId: row.DepartmentId || row.departmentId || null,
+          }));
+
+          const res = await importAssetsAction(formatted);
+          if (res.success) {
+            setSuccess(res.message || "CSV assets imported successfully.");
+            await loadAssets();
+          } else {
+            setError(res.message || "Failed to import CSV assets.");
+          }
+        } catch (err: any) {
+          setError(err.message || "Failed to parse CSV file.");
+        } finally {
+          setLoading(false);
+        }
+      };
+      reader.readAsText(file);
+    } catch (err) {
+      setError("Failed to read CSV file.");
+      setLoading(false);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   return (
     <div className="space-y-6 font-sans">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -208,6 +263,23 @@ export default function AssetsPage() {
           <p className="text-sm text-zinc-500 mt-1">Search, track lifecycles, and view logs of all physical assets and resources.</p>
         </div>
         <div className="mt-4 sm:mt-0 flex items-center space-x-2">
+          {isManagerOrAdmin && (
+            <>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImportCSV}
+                accept=".csv"
+                className="hidden"
+              />
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center border border-zinc-200 hover:bg-zinc-50 text-zinc-800 rounded-lg text-xs py-2 px-4 cursor-pointer bg-white"
+              >
+                Import CSV
+              </Button>
+            </>
+          )}
           <Button
             onClick={handleExportCSV}
             className="flex items-center border border-zinc-200 hover:bg-zinc-50 text-zinc-800 rounded-lg text-xs py-2 px-4 cursor-pointer bg-white"

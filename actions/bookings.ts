@@ -111,7 +111,7 @@ export async function createBooking(data: {
       });
 
       return booking;
-    });
+    }, { maxWait: 15000, timeout: 20000 });
 
     return { success: true, message: "Resource booked successfully.", data: result };
   } catch (error: any) {
