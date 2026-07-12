@@ -1,12 +1,11 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { Role } from "@prisma/client";
 
 async function verifyAdmin(): Promise<string | null> {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (!session || session.user.role !== Role.ADMIN) {
     return null;
   }
@@ -18,7 +17,7 @@ export async function getActivityLogs(filters?: {
   action?: string;
 }) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return [];
 
     const role = session.user.role;

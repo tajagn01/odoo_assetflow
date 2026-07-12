@@ -1,8 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { Role, AssetStatus, AllocationStatus, AssetCondition, MaintenanceStatus, BookingStatus, AuditStatus } from "@prisma/client";
 import { ActionResponse } from "./auth";
 import { allocateAsset, returnAsset, approveAssetTransfer, declineAssetTransfer } from "./allocations";
@@ -183,7 +182,7 @@ async function ensureApprovalDataSeeded(userId: string) {
  */
 export async function getPendingApprovals(): Promise<UnifiedApprovalCard[]> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return [];
 
     const role = session.user.role;
@@ -308,7 +307,7 @@ export async function getPendingApprovals(): Promise<UnifiedApprovalCard[]> {
  */
 export async function transitionToReview(id: string, type: ApprovalRequestType): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return { success: false, message: "Unauthorized." };
 
     if (type === "MAINTENANCE_REQUEST") {
@@ -350,7 +349,7 @@ export async function transitionToReview(id: string, type: ApprovalRequestType):
  */
 export async function assignReviewer(id: string, type: ApprovalRequestType, reviewerId: string): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return { success: false, message: "Unauthorized." };
 
     const reviewer = await db.user.findUnique({ where: { id: reviewerId } });
@@ -395,7 +394,7 @@ export async function assignReviewer(id: string, type: ApprovalRequestType, revi
  */
 export async function requestChanges(id: string, type: ApprovalRequestType, comment: string): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return { success: false, message: "Unauthorized." };
 
     if (!comment.trim()) return { success: false, message: "Changes feedback comment is required." };
@@ -456,7 +455,7 @@ export async function requestChanges(id: string, type: ApprovalRequestType, comm
  */
 export async function approveRequest(id: string, type: ApprovalRequestType): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return { success: false, message: "Unauthorized." };
 
     // Delegate to existing business logic
@@ -561,7 +560,7 @@ export async function approveRequest(id: string, type: ApprovalRequestType): Pro
  */
 export async function rejectRequest(id: string, type: ApprovalRequestType, comment?: string): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return { success: false, message: "Unauthorized." };
 
     if (type === "MAINTENANCE_REQUEST") {

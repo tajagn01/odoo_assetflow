@@ -1,6 +1,5 @@
 import React from "react";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import {
   Package,
@@ -20,7 +19,7 @@ import { transitionMaintenance } from "@/actions/maintenance";
 import DashboardWrapper from "@/components/dashboard/DashboardWrapper";
 
 export default async function DashboardOverview() {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (!session || !session.user) {
     redirect("/login");
   }
@@ -30,17 +29,13 @@ export default async function DashboardOverview() {
 
   const isPowerUser = ["ADMIN", "ASSET_MANAGER"].includes(session.user.role);
 
-  // Pre-fetch assets and employees on the server for quick action modals
-  let assets: any[] = [];
-  let employees: any[] = [];
+  // Pre-fetch assets on the server (scoped by role internally)
+  const assets = await getAssets() || [];
 
+  // Pre-fetch employees on the server only for quick action modals (power users)
+  let employees: any[] = [];
   if (isPowerUser) {
-    const [assetList, employeeList] = await Promise.all([
-      getAssets(),
-      getEmployees(),
-    ]);
-    assets = assetList || [];
-    employees = employeeList || [];
+    employees = await getEmployees() || [];
   }
 
   const role = session.user.role;

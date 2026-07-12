@@ -73,12 +73,41 @@ export default function DashboardWrapper({
   // Widget layout order config
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
 
+  // Group assets by status
+  const statusCounts = (assets || []).reduce((acc: Record<string, number>, a: any) => {
+    acc[a.status] = (acc[a.status] || 0) + 1;
+    return acc;
+  }, {});
+
+  const totalAssetsCount = assets?.length || 1;
+
+  // Group assets by category to show investment value bar chart
+  const categoryStats = (assets || []).reduce((acc: Record<string, { count: number; value: number }>, a: any) => {
+    const catName = a.category?.name || "Uncategorized";
+    const cost = parseFloat(a.acquisitionCost) || 0;
+    if (!acc[catName]) {
+      acc[catName] = { count: 0, value: 0 };
+    }
+    acc[catName].count += 1;
+    acc[catName].value += cost;
+    return acc;
+  }, {});
+
+  const categoryStatsList = Object.entries(categoryStats).map(([name, stat]: any) => ({
+    name,
+    count: stat.count,
+    value: stat.value,
+  })).sort((a: any, b: any) => b.value - a.value);
+
+  const maxCategoryValue = Math.max(...categoryStatsList.map((c) => c.value), 1);
+
   // Default widget structures per role
   const getDefaults = (userRole: string): WidgetConfig[] => {
     switch (userRole) {
       case "ADMIN":
         return [
           { id: "admin_kpis", title: "Enterprise KPI summaries", isHidden: false, isFavorited: false },
+          { id: "overview_charts", title: "Inventory Graphs & Analytics", isHidden: false, isFavorited: false },
           { id: "admin_actions", title: "Administrator Command Shortcuts", isHidden: false, isFavorited: false },
           { id: "admin_overdue", title: "Overdue Return warning cards", isHidden: false, isFavorited: false },
           { id: "admin_activity", title: "Recent System activity logs feed", isHidden: false, isFavorited: false },
@@ -86,18 +115,21 @@ export default function DashboardWrapper({
       case "ASSET_MANAGER":
         return [
           { id: "manager_kpis", title: "Inventory metrics", isHidden: false, isFavorited: false },
+          { id: "overview_charts", title: "Inventory Graphs & Analytics", isHidden: false, isFavorited: false },
           { id: "manager_actions", title: "Quick Actions Desk", isHidden: false, isFavorited: false },
           { id: "manager_approvals", title: "Awaiting approvals requests", isHidden: false, isFavorited: false },
         ];
       case "DEPARTMENT_HEAD":
         return [
           { id: "dept_kpis", title: "Department KPIs", isHidden: false, isFavorited: false },
+          { id: "overview_charts", title: "Inventory Graphs & Analytics", isHidden: false, isFavorited: false },
           { id: "dept_actions", title: "Quick Actions shortcuts", isHidden: false, isFavorited: false },
           { id: "dept_transfers", title: "Pending Transfer Approvals Hub", isHidden: false, isFavorited: false },
         ];
       default: // EMPLOYEE
         return [
           { id: "emp_kpis", title: "My Custody KPIs", isHidden: false, isFavorited: false },
+          { id: "overview_charts", title: "Inventory Graphs & Analytics", isHidden: false, isFavorited: false },
           { id: "emp_actions", title: "Operations shortcuts desk", isHidden: false, isFavorited: false },
           { id: "emp_custody", title: "My Custody Assets register", isHidden: false, isFavorited: false },
           { id: "emp_bookings", title: "My Booking reservation list", isHidden: false, isFavorited: false },
@@ -362,6 +394,83 @@ export default function DashboardWrapper({
                 </div>
               )}
 
+              {/* GLOBAL CHARTS WIDGET */}
+              {widget.id === "overview_charts" && (
+                <div className="p-6 space-y-6 select-none animate-in fade-in duration-300">
+                  <div className="border-b border-zinc-100 pb-3 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xs font-black text-zinc-950 uppercase tracking-wider">Inventory Distribution & Asset Valuation</h3>
+                      <p className="text-[10px] text-zinc-400 mt-0.5 font-bold">Real-time status breakdowns and capital allocation profiles.</p>
+                    </div>
+                    <BarChart3 className="h-4 w-4 text-zinc-400" />
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Left: Status Distribution Chart */}
+                    <div className="space-y-4">
+                      <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Roster Status Share</span>
+                      <div className="space-y-3.5">
+                        {[
+                          { status: "AVAILABLE", label: "Available / Ready", color: "bg-zinc-950", border: "border-zinc-950/20" },
+                          { status: "ALLOCATED", label: "Allocated in Custody", color: "bg-zinc-500", border: "border-zinc-500/20" },
+                          { status: "UNDER_MAINTENANCE", label: "Under Active Maintenance", color: "bg-zinc-400", border: "border-zinc-400/20" },
+                          { status: "LOST", label: "Reported Lost", color: "bg-zinc-350", border: "border-zinc-350/20" },
+                          { status: "RETIRED", label: "Retired / Disposed", color: "bg-zinc-200", border: "border-zinc-200/20" },
+                        ].map((cfg) => {
+                          const count = statusCounts[cfg.status] || 0;
+                          const pct = Math.round((count / totalAssetsCount) * 100);
+                          return (
+                            <div key={cfg.status} className="space-y-1.5">
+                              <div className="flex justify-between items-center text-[10px] font-bold">
+                                <span className="text-zinc-700">{cfg.label}</span>
+                                <span className="text-zinc-950">{count} items ({pct}%)</span>
+                              </div>
+                              <div className="h-2 w-full bg-zinc-100 rounded-full overflow-hidden border border-zinc-200/50">
+                                <div 
+                                  className={`h-full ${cfg.color} rounded-full transition-all duration-500`}
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Right: Category Investment Distribution */}
+                    <div className="space-y-4">
+                      <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Asset Category Capital Valuation</span>
+                      <div className="space-y-3">
+                        {categoryStatsList.length === 0 ? (
+                          <div className="py-12 text-center text-zinc-400 text-xs italic">No category value information.</div>
+                        ) : (
+                          categoryStatsList.slice(0, 5).map((cat) => {
+                            const pct = Math.round((cat.value / maxCategoryValue) * 100);
+                            return (
+                              <div key={cat.name} className="space-y-1">
+                                <div className="flex justify-between items-center text-[10px] font-bold">
+                                  <span className="text-zinc-700 truncate max-w-[150px]">{cat.name}</span>
+                                  <span className="text-zinc-950">₹{cat.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <div className="h-4 flex-1 bg-zinc-50 border border-zinc-150 rounded overflow-hidden">
+                                    <div 
+                                      className="h-full bg-zinc-950 transition-all duration-500"
+                                      style={{ width: `${pct}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[9px] font-bold text-zinc-400 w-8 text-right shrink-0">{pct}%</span>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* ADMIN WIDGETS */}
               {widget.id === "admin_kpis" && (
                 <div className={paddingClass}>
@@ -374,7 +483,7 @@ export default function DashboardWrapper({
                         <Database className="h-4 w-4 text-zinc-400" />
                       </div>
                       <div className={`${textClass} font-black text-zinc-950 tracking-tight`}>
-                        ${execMetrics?.assetValue?.original ? execMetrics.assetValue.original.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "..."}
+                        ₹{execMetrics?.assetValue?.original ? execMetrics.assetValue.original.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "..."}
                       </div>
                       <div className="text-[10px] text-zinc-500 font-semibold">
                         Roster count: {metrics?.kpis?.assetsAvailable + metrics?.kpis?.assetsAllocated || 0} items
@@ -388,10 +497,10 @@ export default function DashboardWrapper({
                         <DollarSign className="h-4 w-4 text-zinc-400" />
                       </div>
                       <div className={`${textClass} font-black text-emerald-800 tracking-tight`}>
-                        ${execMetrics?.assetValue?.current ? execMetrics.assetValue.current.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "..."}
+                        ₹{execMetrics?.assetValue?.current ? execMetrics.assetValue.current.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "..."}
                       </div>
                       <div className="text-[10px] text-red-650 font-semibold">
-                        Accumulated: -${execMetrics?.assetValue?.accumulatedDepreciation ? execMetrics.assetValue.accumulatedDepreciation.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "..."}
+                        Accumulated: -₹{execMetrics?.assetValue?.accumulatedDepreciation ? execMetrics.assetValue.accumulatedDepreciation.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "..."}
                       </div>
                     </div>
 
@@ -574,31 +683,31 @@ export default function DashboardWrapper({
               {widget.id === "dept_kpis" && (
                 <div className={paddingClass}>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 select-none">
-                    <div className="border border-zinc-150 p-4 rounded-xl space-y-1">
+                    <div className="p-4 rounded-xl space-y-1 bg-white shadow-sm">
                       <div className="flex items-center justify-between text-[10px] font-black text-zinc-400 uppercase tracking-wider">
                         <span>Department Assets</span>
                         <Package className="h-4 w-4 text-zinc-400" />
                       </div>
                       <div className={`${textClass} font-black text-zinc-950 tracking-tight`}>
-                        {metrics?.deptAssetsCount || 0} Units
+                        {metrics?.deptStats?.assetsCount || 0} Units
                       </div>
                     </div>
-                    <div className="border border-zinc-150 p-4 rounded-xl space-y-1">
+                    <div className="p-4 rounded-xl space-y-1 bg-white shadow-sm">
                       <div className="flex items-center justify-between text-[10px] font-black text-zinc-400 uppercase tracking-wider">
                         <span>Active Bookings</span>
                         <Calendar className="h-4 w-4 text-zinc-400" />
                       </div>
                       <div className={`${textClass} font-black text-zinc-950 tracking-tight`}>
-                        {metrics?.deptBookingsCount || 0} Bookings
+                        {metrics?.deptStats?.bookingsCount || 0} Bookings
                       </div>
                     </div>
-                    <div className="border border-zinc-150 p-4 rounded-xl space-y-1">
+                    <div className="p-4 rounded-xl space-y-1 bg-white shadow-sm">
                       <div className="flex items-center justify-between text-[10px] font-black text-zinc-400 uppercase tracking-wider">
                         <span>Members Headcount</span>
                         <Users className="h-4 w-4 text-zinc-400" />
                       </div>
                       <div className={`${textClass} font-black text-zinc-950 tracking-tight`}>
-                        {metrics?.deptUsersCount || 0} Employees
+                        {metrics?.deptStats?.employeesCount || 0} Employees
                       </div>
                     </div>
                   </div>

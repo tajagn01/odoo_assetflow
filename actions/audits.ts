@@ -1,13 +1,12 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { Role, AuditStatus, AuditVerification, AssetStatus } from "@prisma/client";
 import { ActionResponse } from "./auth";
 
 async function verifyAuthorized(): Promise<string | null> {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (!session || !["ADMIN", "ASSET_MANAGER"].includes(session.user.role)) {
     return null;
   }

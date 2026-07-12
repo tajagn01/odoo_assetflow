@@ -1,8 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { Role } from "@prisma/client";
 
 export interface SearchResult {
@@ -18,7 +17,7 @@ export interface SearchResult {
  */
 export async function searchEnterprise(query: string): Promise<SearchResult[]> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return [];
 
     const trimmed = query.trim().toLowerCase();

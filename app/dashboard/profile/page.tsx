@@ -344,7 +344,7 @@ export default function ProfilePage() {
                     <div className="space-y-1">
                       <span className="font-bold text-zinc-950 block">{alloc.asset.name}</span>
                       <span className="text-[10px] text-zinc-400 block font-mono">
-                        Serial: {alloc.asset.serialNumber} | Value: ${alloc.asset.acquisitionCost}
+                        Serial: {alloc.asset.serialNumber} | Value: ₹{alloc.asset.acquisitionCost}
                       </span>
                     </div>
                     <div className="text-right space-y-1">

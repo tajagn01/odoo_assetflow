@@ -869,7 +869,7 @@ export default function AssetsPage() {
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div className="space-y-1">
                   <div className="text-zinc-400 font-medium">Acquisition Cost</div>
-                  <div className="font-semibold text-zinc-800">${parseFloat(detailedAsset.acquisitionCost).toFixed(2)}</div>
+                  <div className="font-semibold text-zinc-800">₹{parseFloat(detailedAsset.acquisitionCost).toFixed(2)}</div>
                 </div>
                 <div className="space-y-1">
                   <div className="text-zinc-400 font-medium">Condition</div>

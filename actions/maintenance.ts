@@ -1,15 +1,14 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { Role, MaintenanceStatus, MaintenancePriority, AssetStatus } from "@prisma/client";
 import { ActionResponse } from "./auth";
 
 // Fetch maintenance requests
 export async function getMaintenanceRequests() {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return [];
 
     const role = session.user.role;
@@ -52,7 +51,7 @@ export async function createMaintenanceRequest(data: {
   photoUrl?: string;
 }): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) {
       return { success: false, message: "Unauthorized. Please log in." };
     }
@@ -101,7 +100,7 @@ export async function transitionMaintenance(data: {
   repairAttachments?: string;
 }): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session || !["ADMIN", "ASSET_MANAGER"].includes(session.user.role)) {
       return { success: false, message: "Unauthorized. Manager role required." };
     }

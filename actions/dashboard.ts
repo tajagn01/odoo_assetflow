@@ -1,13 +1,12 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { AssetStatus, BookingStatus, AllocationStatus, Role, MaintenanceStatus } from "@prisma/client";
 
 export async function getDashboardMetrics() {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return null;
 
     const now = new Date();
@@ -130,9 +129,16 @@ export async function getDashboardMetrics() {
 
     let deptEmployeesCount = 0;
     let deptAssetsCount = 0;
+    let deptBookingsCount = 0;
     if (role === "DEPARTMENT_HEAD" && departmentId) {
       deptEmployeesCount = await db.user.count({ where: { departmentId } });
       deptAssetsCount = await db.asset.count({ where: { departmentId, deletedAt: null } });
+      deptBookingsCount = await db.resourceBooking.count({
+        where: {
+          asset: { departmentId },
+          status: { in: [BookingStatus.UPCOMING, BookingStatus.ONGOING] }
+        }
+      });
     }
 
     // Fetch upcoming and overdue schedules counts
@@ -205,6 +211,7 @@ export async function getDashboardMetrics() {
         deptStats: {
           employeesCount: deptEmployeesCount,
           assetsCount: deptAssetsCount,
+          bookingsCount: deptBookingsCount,
         },
         preventiveAlerts: {
           count: schedulesAlertsCount,

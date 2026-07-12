@@ -71,13 +71,6 @@ export default function Sidebar({ role }: SidebarProps) {
       action: "READ",
     },
     {
-      title: "Vendors",
-      href: "/dashboard/vendors",
-      icon: Truck,
-      resource: "VENDORS",
-      action: "READ",
-    },
-    {
       title: "Maintenance",
       href: "/dashboard/maintenance",
       icon: Wrench,
@@ -113,22 +106,9 @@ export default function Sidebar({ role }: SidebarProps) {
       action: "READ",
     },
     {
-      title: "Intelligence Hub",
-      href: "/dashboard/intelligence",
-      icon: Sparkles,
-      resource: "REPORTS",
-      action: "READ",
-    },
-    {
       title: "Help Center",
       href: "/dashboard/help",
       icon: HelpCircle,
-      free: true,
-    },
-    {
-      title: "Enterprise AI Hub",
-      href: "/dashboard/ai",
-      icon: Sparkles,
       free: true,
     },
     {

@@ -1,13 +1,12 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { Role, AssetStatus, AllocationStatus, AssetCondition } from "@prisma/client";
 import { ActionResponse } from "./auth";
 
 async function verifyAuthorized(): Promise<string | null> {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (!session || !["ADMIN", "ASSET_MANAGER"].includes(session.user.role)) {
     return null;
   }
@@ -194,7 +193,7 @@ export async function returnAsset(data: {
 // Get list of active employees for transfer target dropdown
 export async function getTransferTargets(): Promise<{ id: string; name: string; email: string; department: string | null }[]> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return [];
 
     const users = await db.user.findMany({
@@ -231,7 +230,7 @@ export async function requestAssetTransfer(data: {
   targetUserId: string;
 }): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) {
       return { success: false, message: "Unauthorized." };
     }
@@ -403,7 +402,7 @@ export async function requestAssetTransfer(data: {
 // Approve a pending transfer request (Admin / Asset Manager / Dept Head)
 export async function approveAssetTransfer(notificationId: string): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) {
       return { success: false, message: "Unauthorized." };
     }
@@ -538,7 +537,7 @@ export async function approveAssetTransfer(notificationId: string): Promise<Acti
 // Decline a pending transfer request
 export async function declineAssetTransfer(notificationId: string): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) {
       return { success: false, message: "Unauthorized." };
     }
@@ -599,7 +598,7 @@ export async function declineAssetTransfer(notificationId: string): Promise<Acti
 // Get pending transfer requests for approval (Dept Head / Admin / Asset Manager)
 export async function getPendingTransferRequests(): Promise<any[]> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return [];
 
     if (!["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD"].includes(session.user.role)) {

@@ -5,31 +5,44 @@ import bcrypt from "bcryptjs";
 async function main() {
   console.log("🌱 Starting Database Seeding...");
 
-  // 1. Seed Users (Admin & Employees)
-  const passwordHash = await bcrypt.hash("AdminPassword123!", 10);
+  // Delete existing records to allow clean re-seeding without constraint conflicts
+  await db.activityLog.deleteMany({});
+  await db.maintenanceRequest.deleteMany({});
+  await db.resourceBooking.deleteMany({});
+  await db.allocation.deleteMany({});
+  await db.auditItem.deleteMany({});
+  await (db as any).assetDocument.deleteMany({});
+  await db.asset.deleteMany({});
+
+  // 1. Seed Users (Admin, Manager, Head, Employees)
+  const adminHash = await bcrypt.hash("AdminPassword123!", 10);
+  const managerHash = await bcrypt.hash("ManagerPassword123!", 10);
+  const headHash = await bcrypt.hash("HeadPassword123!", 10);
   const employeeHash = await bcrypt.hash("EmployeePassword123!", 10);
 
   // Admin
-  let admin = await db.user.findUnique({ where: { email: "admin@assetflow.com" } });
+  let admin = await db.user.findUnique({ where: { email: "newadmin@assetflow.com" } });
   if (!admin) {
     admin = await db.user.create({
       data: {
         name: "Admin Administrator",
-        email: "admin@assetflow.com",
-        passwordHash,
+        email: "newadmin@assetflow.com",
+        passwordHash: adminHash,
         role: Role.ADMIN,
         status: "ACTIVE",
       },
     });
-    console.log("✅ Seeded Admin: admin@assetflow.com");
+    console.log("✅ Seeded Admin: newadmin@assetflow.com");
   }
 
-  // Employees
+  // Other Users
   const employeeData = [
-    { name: "Priya Patel", email: "priya@assetflow.com", role: Role.EMPLOYEE },
-    { name: "Raj Sharma", email: "raj@assetflow.com", role: Role.EMPLOYEE },
-    { name: "Amit Verma", email: "amit@assetflow.com", role: Role.EMPLOYEE },
-    { name: "Sneha Reddy", email: "sneha@assetflow.com", role: Role.EMPLOYEE },
+    { name: "Priya Patel", email: "priya@assetflow.com", role: Role.EMPLOYEE, passwordHash: employeeHash },
+    { name: "Raj Sharma", email: "raj@assetflow.com", role: Role.EMPLOYEE, passwordHash: employeeHash },
+    { name: "Amit Verma", email: "amit@assetflow.com", role: Role.EMPLOYEE, passwordHash: employeeHash },
+    { name: "Sneha Reddy", email: "sneha@assetflow.com", role: Role.EMPLOYEE, passwordHash: employeeHash },
+    { name: "Asset Manager", email: "manager@assetflow.com", role: Role.ASSET_MANAGER, passwordHash: managerHash },
+    { name: "Department Head", email: "head@assetflow.com", role: Role.DEPARTMENT_HEAD, passwordHash: headHash },
   ];
 
   const employees = [];
@@ -40,12 +53,12 @@ async function main() {
         data: {
           name: emp.name,
           email: emp.email,
-          passwordHash: employeeHash,
+          passwordHash: emp.passwordHash,
           role: emp.role,
           status: "ACTIVE",
         },
       });
-      console.log(`✅ Seeded Employee: ${emp.email}`);
+      console.log(`✅ Seeded User: ${emp.email} [${emp.role}]`);
     }
     employees.push(user);
   }
@@ -78,15 +91,23 @@ async function main() {
     const emp = employees[i];
     const dept = departments[i % departments.length];
     
+    let targetDept = dept;
+    if (emp.role === Role.DEPARTMENT_HEAD) {
+      const designDept = departments.find(d => d.name === "Product Design");
+      if (designDept) targetDept = designDept;
+    }
+    
     await db.user.update({
       where: { id: emp.id },
-      data: { departmentId: dept.id },
+      data: { departmentId: targetDept.id },
     });
 
-    await db.department.update({
-      where: { id: dept.id },
-      data: { managerId: emp.id },
-    });
+    if (emp.role === Role.DEPARTMENT_HEAD || emp.role === Role.EMPLOYEE) {
+      await db.department.update({
+        where: { id: targetDept.id },
+        data: { managerId: emp.id },
+      });
+    }
   }
 
   // 3. Seed Categories
@@ -119,7 +140,7 @@ async function main() {
       categoryId: electronicCat.id,
       serialNumber: "SN-MBP-30918",
       acquisitionDate: new Date("2025-06-15"),
-      acquisitionCost: 3499.00,
+      acquisitionCost: 250000.00,
       condition: AssetCondition.NEW,
       status: AssetStatus.ALLOCATED,
       location: "Engineering HQ - Row C",
@@ -131,7 +152,7 @@ async function main() {
       categoryId: electronicCat.id,
       serialNumber: "SN-DEL-99201",
       acquisitionDate: new Date("2025-07-20"),
-      acquisitionCost: 899.00,
+      acquisitionCost: 75000.00,
       condition: AssetCondition.GOOD,
       status: AssetStatus.AVAILABLE,
       location: "Engineering HQ - Row C",
@@ -143,7 +164,7 @@ async function main() {
       categoryId: furnitureCat.id,
       serialNumber: "SN-AER-48201",
       acquisitionDate: new Date("2024-01-10"),
-      acquisitionCost: 1450.00,
+      acquisitionCost: 120000.00,
       condition: AssetCondition.GOOD,
       status: AssetStatus.ALLOCATED,
       location: "Design Studio - Level 2",
@@ -155,7 +176,7 @@ async function main() {
       categoryId: vehicleCat.id,
       serialNumber: "SN-TSL-MY771",
       acquisitionDate: new Date("2025-02-01"),
-      acquisitionCost: 52400.00,
+      acquisitionCost: 4500000.00,
       condition: AssetCondition.NEW,
       status: AssetStatus.AVAILABLE,
       location: "Basement Garage - Stall 12",
@@ -167,7 +188,7 @@ async function main() {
       categoryId: machineryCat.id,
       serialNumber: "SN-FLB-3D400",
       acquisitionDate: new Date("2024-09-12"),
-      acquisitionCost: 4999.00,
+      acquisitionCost: 400000.00,
       condition: AssetCondition.GOOD,
       status: AssetStatus.UNDER_MAINTENANCE,
       location: "R&D Prototype Lab",
@@ -179,7 +200,7 @@ async function main() {
       categoryId: electronicCat.id,
       serialNumber: "SN-IPD-M4801",
       acquisitionDate: new Date("2025-08-01"),
-      acquisitionCost: 1299.00,
+      acquisitionCost: 110000.00,
       condition: AssetCondition.NEW,
       status: AssetStatus.AVAILABLE,
       location: "Storage Safe 4A",
@@ -191,13 +212,109 @@ async function main() {
       categoryId: furnitureCat.id,
       serialNumber: "SN-STN-88123",
       acquisitionDate: new Date("2024-03-15"),
-      acquisitionCost: 650.00,
+      acquisitionCost: 55000.00,
       condition: AssetCondition.FAIR,
       status: AssetStatus.ALLOCATED,
       location: "Finance Wing",
       isSharedResource: false,
       departmentId: departments[3].id,
     },
+    {
+      name: "iPhone 16 Pro Max",
+      categoryId: electronicCat.id,
+      serialNumber: "SN-IPH-16PM9",
+      acquisitionDate: new Date("2025-09-20"),
+      acquisitionCost: 145000.00,
+      condition: AssetCondition.NEW,
+      status: AssetStatus.ALLOCATED,
+      location: "Marketing Room 2B",
+      isSharedResource: false,
+      departmentId: departments[2].id,
+    },
+    {
+      name: "ThinkPad P1 Gen 7 Workstation",
+      categoryId: electronicCat.id,
+      serialNumber: "SN-THK-P1G7",
+      acquisitionDate: new Date("2025-03-10"),
+      acquisitionCost: 180000.00,
+      condition: AssetCondition.GOOD,
+      status: AssetStatus.AVAILABLE,
+      location: "Finance Wing",
+      isSharedResource: false,
+      departmentId: departments[3].id,
+    },
+    {
+      name: "Steelcase Gesture Office Chair",
+      categoryId: furnitureCat.id,
+      serialNumber: "SN-STC-GEST",
+      acquisitionDate: new Date("2024-05-18"),
+      acquisitionCost: 95000.00,
+      condition: AssetCondition.GOOD,
+      status: AssetStatus.AVAILABLE,
+      location: "Design Studio - Level 2",
+      isSharedResource: false,
+      departmentId: departments[1].id,
+    },
+    {
+      name: "Sony Alpha 7 IV Camera Kit",
+      categoryId: electronicCat.id,
+      serialNumber: "SN-SON-A7IV",
+      acquisitionDate: new Date("2024-11-05"),
+      acquisitionCost: 220000.00,
+      condition: AssetCondition.GOOD,
+      status: AssetStatus.ALLOCATED,
+      location: "Marketing Room 2B",
+      isSharedResource: false,
+      departmentId: departments[2].id,
+    },
+    {
+      name: "Industrial Laser Engraver",
+      categoryId: machineryCat.id,
+      serialNumber: "SN-LSR-ENG",
+      acquisitionDate: new Date("2024-07-22"),
+      acquisitionCost: 350000.00,
+      condition: AssetCondition.FAIR,
+      status: AssetStatus.UNDER_MAINTENANCE,
+      location: "R&D Prototype Lab",
+      isSharedResource: true,
+      departmentId: departments[1].id,
+    },
+    {
+      name: "Company Shuttle Van (Electric)",
+      categoryId: vehicleCat.id,
+      serialNumber: "SN-VAN-EV200",
+      acquisitionDate: new Date("2025-01-15"),
+      acquisitionCost: 2400000.00,
+      condition: AssetCondition.GOOD,
+      status: AssetStatus.AVAILABLE,
+      location: "Basement Garage - Stall 14",
+      isSharedResource: true,
+      departmentId: departments[0].id,
+    },
+    {
+      name: "Lounge Sofa Sectional",
+      categoryId: furnitureCat.id,
+      serialNumber: "SN-LOUNG-SOF",
+      acquisitionDate: new Date("2024-08-10"),
+      acquisitionCost: 150000.00,
+      condition: AssetCondition.GOOD,
+      status: AssetStatus.AVAILABLE,
+      location: "Marketing Hub Lounge",
+      isSharedResource: false,
+      departmentId: departments[2].id,
+    },
+    {
+      name: "High-Capacity Forklift",
+      categoryId: machineryCat.id,
+      serialNumber: "SN-FRK-LFT",
+      acquisitionDate: new Date("2023-05-12"),
+      acquisitionCost: 850000.00,
+      condition: AssetCondition.POOR,
+      status: AssetStatus.LOST,
+      location: "Loading Dock B",
+      isSharedResource: false,
+      departmentId: departments[0].id,
+    }
   ];
 
   let tagIndex = 1;

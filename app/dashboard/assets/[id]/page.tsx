@@ -558,9 +558,9 @@ export default function AssetDetailsPage() {
                     <span className="text-zinc-500 font-medium">Vendor Partner</span>
                     <span className="font-bold text-zinc-900 text-right truncate max-w-[150px]">
                       {asset.vendor ? (
-                        <Link href={`/dashboard/vendors/${asset.vendor.id}`} className="text-indigo-600 hover:underline font-bold">
+                        <span className="text-zinc-900 font-bold">
                           {asset.vendor.companyName}
-                        </Link>
+                        </span>
                       ) : (
                         "None"
                       )}
@@ -617,11 +617,11 @@ export default function AssetDetailsPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-zinc-50/50 p-4 rounded-xl border border-zinc-150">
                       <div>
                         <span className="text-[9px] font-black text-zinc-400 block uppercase">Acquisition Cost</span>
-                        <span className="text-base font-black text-zinc-950">${depreciationData.cost.toFixed(2)}</span>
+                        <span className="text-base font-black text-zinc-950">₹{depreciationData.cost.toFixed(2)}</span>
                       </div>
                       <div>
                         <span className="text-[9px] font-black text-zinc-400 block uppercase">Salvage Value (10%)</span>
-                        <span className="text-base font-black text-zinc-950">${depreciationData.salvageValue.toFixed(2)}</span>
+                        <span className="text-base font-black text-zinc-950">₹{depreciationData.salvageValue.toFixed(2)}</span>
                       </div>
                       <div>
                         <span className="text-[9px] font-black text-zinc-400 block uppercase">Useful Life</span>
@@ -640,15 +640,15 @@ export default function AssetDetailsPage() {
                         <div className="space-y-2">
                           <div className="flex justify-between">
                             <span className="text-zinc-500 font-medium">Current Book Value:</span>
-                            <span className="font-black text-emerald-800">${depreciationData.straightLine.currentValue.toFixed(2)}</span>
+                            <span className="font-black text-emerald-800">₹{depreciationData.straightLine.currentValue.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-zinc-500 font-medium">Accumulated Dep:</span>
-                            <span className="font-bold text-red-650">${depreciationData.straightLine.accumulatedDepreciation.toFixed(2)}</span>
+                            <span className="font-bold text-red-650">₹{depreciationData.straightLine.accumulatedDepreciation.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-zinc-500 font-medium">Remaining Value:</span>
-                            <span className="font-bold text-zinc-800">${depreciationData.straightLine.remainingValue.toFixed(2)}</span>
+                            <span className="font-bold text-zinc-800">₹{depreciationData.straightLine.remainingValue.toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
@@ -659,15 +659,15 @@ export default function AssetDetailsPage() {
                         <div className="space-y-2">
                           <div className="flex justify-between">
                             <span className="text-zinc-500 font-medium">Current Book Value:</span>
-                            <span className="font-black text-emerald-800">${depreciationData.wdv.currentValue.toFixed(2)}</span>
+                            <span className="font-black text-emerald-800">₹{depreciationData.wdv.currentValue.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-zinc-500 font-medium">Accumulated Dep:</span>
-                            <span className="font-bold text-red-650">${depreciationData.wdv.accumulatedDepreciation.toFixed(2)}</span>
+                            <span className="font-bold text-red-650">₹{depreciationData.wdv.accumulatedDepreciation.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-zinc-500 font-medium">Remaining Value:</span>
-                            <span className="font-bold text-zinc-800">${depreciationData.wdv.remainingValue.toFixed(2)}</span>
+                            <span className="font-bold text-zinc-800">₹{depreciationData.wdv.remainingValue.toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
@@ -683,7 +683,7 @@ export default function AssetDetailsPage() {
                             {depreciationData.straightLine.schedule.map((item: any) => (
                               <div key={item.year} className="flex justify-between py-1.5">
                                 <span className="text-zinc-500">Year {item.year}</span>
-                                <span className="text-zinc-850">${item.remainingValue.toFixed(2)}</span>
+                                <span className="text-zinc-850">₹{item.remainingValue.toFixed(2)}</span>
                               </div>
                             ))}
                           </div>
@@ -695,7 +695,7 @@ export default function AssetDetailsPage() {
                             {depreciationData.wdv.schedule.map((item: any) => (
                               <div key={item.year} className="flex justify-between py-1.5">
                                 <span className="text-zinc-500">Year {item.year}</span>
-                                <span className="text-zinc-850">${item.remainingValue.toFixed(2)}</span>
+                                <span className="text-zinc-850">₹{item.remainingValue.toFixed(2)}</span>
                               </div>
                             ))}
                           </div>

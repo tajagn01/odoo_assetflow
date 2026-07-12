@@ -177,7 +177,7 @@ export default function DepartmentDetailsPage() {
             <Building2 className="h-4 w-4 text-zinc-400" />
           </div>
           <div>
-            <div className="text-2xl font-black text-zinc-950 tracking-tight">${assetValuation.toFixed(2)}</div>
+            <div className="text-2xl font-black text-zinc-950 tracking-tight">₹{assetValuation.toFixed(2)}</div>
             <p className="text-[9px] text-zinc-400 font-semibold mt-1">Accumulated department asset worth</p>
           </div>
         </div>
@@ -548,7 +548,7 @@ export default function DepartmentDetailsPage() {
               <div className="space-y-1">
                 <div className="flex justify-between font-bold text-[10px] uppercase text-zinc-550">
                   <span>Assigned Custody Cost</span>
-                  <span>${assetValuation.toFixed(2)}</span>
+                  <span>₹{assetValuation.toFixed(2)}</span>
                 </div>
                 <div className="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
                   <div className="bg-zinc-950 h-full" style={{ width: `${Math.min(100, assetValuation / 10000)}%` }} />
@@ -557,7 +557,7 @@ export default function DepartmentDetailsPage() {
               <div className="space-y-1">
                 <div className="flex justify-between font-bold text-[10px] uppercase text-zinc-550">
                   <span>Average Cost per Unit</span>
-                  <span>${dept.assets?.length > 0 ? (assetValuation / dept.assets.length).toFixed(2) : "0.00"}</span>
+                  <span>₹{dept.assets?.length > 0 ? (assetValuation / dept.assets.length).toFixed(2) : "0.00"}</span>
                 </div>
                 <div className="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
                   <div className="bg-zinc-450 h-full" style={{ width: "45%" }} />

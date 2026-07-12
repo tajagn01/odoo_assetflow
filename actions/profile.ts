@@ -1,8 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 import { ActionResponse } from "./auth";
 import { revalidatePath } from "next/cache";
@@ -10,7 +9,7 @@ import { revalidatePath } from "next/cache";
 // Fetch full profile data for the current authenticated user
 export async function getProfileData() {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session || !session.user?.id) {
       return null;
     }
@@ -121,7 +120,7 @@ export async function updateProfileData(input: {
   emailNotificationsEnabled?: boolean;
 }): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session || !session.user?.id) {
       return { success: false, message: "Unauthorized. Please log in." };
     }
@@ -165,7 +164,7 @@ export async function updateProfileData(input: {
 // Security: Change User Password
 export async function updateUserPassword(rawInput: any): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session || !session.user?.id) {
       return { success: false, message: "Unauthorized. Please log in." };
     }

@@ -1,7 +1,6 @@
 "use server";
 
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { NotificationService } from "../services/NotificationService";
 
 export interface StandardActionResponse<T = any> {
@@ -19,7 +18,7 @@ export interface StandardActionResponse<T = any> {
  */
 export async function getNotificationsAction(): Promise<StandardActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session || !session.user) {
       return {
         success: false,
@@ -53,7 +52,7 @@ export async function getNotificationsAction(): Promise<StandardActionResponse> 
  */
 export async function markAsReadAction(id: string): Promise<StandardActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session || !session.user) {
       return {
         success: false,
@@ -87,7 +86,7 @@ export async function markAsReadAction(id: string): Promise<StandardActionRespon
  */
 export async function markAllAsReadAction(): Promise<StandardActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session || !session.user) {
       return {
         success: false,
@@ -121,7 +120,7 @@ export async function markAllAsReadAction(): Promise<StandardActionResponse> {
  */
 export async function togglePinAction(id: string, isPinned: boolean): Promise<StandardActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session || !session.user) {
       return { success: false, error: { code: "UNAUTHORIZED", message: "Auth required." } };
     }
@@ -137,7 +136,7 @@ export async function togglePinAction(id: string, isPinned: boolean): Promise<St
  */
 export async function toggleArchiveAction(id: string, isArchived: boolean): Promise<StandardActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session || !session.user) {
       return { success: false, error: { code: "UNAUTHORIZED", message: "Auth required." } };
     }
@@ -153,7 +152,7 @@ export async function toggleArchiveAction(id: string, isArchived: boolean): Prom
  */
 export async function deleteNotificationAction(id: string): Promise<StandardActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session || !session.user) {
       return { success: false, error: { code: "UNAUTHORIZED", message: "Auth required." } };
     }

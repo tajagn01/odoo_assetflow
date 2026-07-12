@@ -1,8 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { ActionResponse } from "./auth";
 import fs from "fs";
 import path from "path";
@@ -21,7 +20,7 @@ const ALLOWED_EXTS = [".pdf", ".png", ".jpg", ".jpeg", ".webp", ".docx", ".xlsx"
 
 export async function getAssetDocuments(assetId: string) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return [];
 
     const docs = await db.assetDocument.findMany({
@@ -43,7 +42,7 @@ export async function getAssetDocuments(assetId: string) {
 
 export async function uploadAssetDocument(formData: FormData): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) {
       return { success: false, message: "Unauthorized. Please log in." };
     }
@@ -140,7 +139,7 @@ export async function uploadAssetDocument(formData: FormData): Promise<ActionRes
 
 export async function replaceAssetDocument(documentId: string, formData: FormData): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) {
       return { success: false, message: "Unauthorized. Please log in." };
     }
@@ -233,7 +232,7 @@ export async function replaceAssetDocument(documentId: string, formData: FormDat
 
 export async function deleteAssetDocument(documentId: string): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) {
       return { success: false, message: "Unauthorized. Please log in." };
     }
@@ -286,7 +285,7 @@ export async function deleteAssetDocument(documentId: string): Promise<ActionRes
 
 export async function logDocumentDownload(documentId: string): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return { success: false, message: "Unauthorized." };
 
     const doc = await db.assetDocument.findUnique({

@@ -2,8 +2,7 @@
 
 import fs from "fs";
 import path from "path";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 const CONFIG_PATH = path.join(process.cwd(), "config", "org_settings.json");
@@ -68,7 +67,7 @@ const DEFAULT_SETTINGS: OrgSettings = {
 
 // Verify session role is strictly ADMIN
 async function verifyAdmin() {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (!session || session.user.role !== "ADMIN") {
     throw new Error("Unauthorized. Admin role credentials required.");
   }

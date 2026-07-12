@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Search, X, User, Tag, Shield, Calendar, Wrench, Info, History, ArrowRight } from "lucide-react";
 import { globalSearch, SearchItem } from "@/actions/intelligence";
@@ -14,6 +15,13 @@ export default function GlobalSearch() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -132,13 +140,12 @@ export default function GlobalSearch() {
 
   const getIcon = (type: string) => {
     switch (type) {
-      case "Asset": return <Tag className="h-4 w-4 text-blue-500" />;
-      case "Employee": return <User className="h-4 w-4 text-purple-500" />;
-      case "Vendor": return <Info className="h-4 w-4 text-emerald-500" />;
-      case "Department": return <Shield className="h-4 w-4 text-amber-500" />;
-      case "Booking": return <Calendar className="h-4 w-4 text-indigo-500" />;
-      case "Maintenance": return <Wrench className="h-4 w-4 text-rose-500" />;
-      default: return <Info className="h-4 w-4 text-zinc-400" />;
+      case "Asset": return <Tag className="h-4 w-4" />;
+      case "Employee": return <User className="h-4 w-4" />;
+      case "Department": return <Shield className="h-4 w-4" />;
+      case "Booking": return <Calendar className="h-4 w-4" />;
+      case "Maintenance": return <Wrench className="h-4 w-4" />;
+      default: return <Info className="h-4 w-4" />;
     }
   };
 
@@ -158,11 +165,11 @@ export default function GlobalSearch() {
         </kbd>
       </button>
 
-      {/* Floating search command palette overlay */}
-      {isOpen && (
+      {/* Floating search command palette overlay via React Portal */}
+      {isOpen && mounted && typeof document !== "undefined" && createPortal(
         <div 
           onClick={handleBackdropClick}
-          className="fixed inset-0 bg-black/60 z-50 flex justify-center items-start pt-[10vh] p-4 backdrop-blur-xs select-none"
+          className="fixed inset-0 bg-black/60 z-[100] flex justify-center items-start pt-[10vh] p-4 backdrop-blur-xs select-none"
         >
           <div 
             ref={modalRef}
@@ -174,7 +181,7 @@ export default function GlobalSearch() {
               <input
                 ref={inputRef}
                 type="text"
-                placeholder="Search assets, employees, bookings, tickets, vendors..."
+                placeholder="Search assets, departments, employees, bookings, tickets..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -202,7 +209,6 @@ export default function GlobalSearch() {
                 { type: "all", label: "All Items" },
                 { type: "assets", label: "Assets" },
                 { type: "employees", label: "Employees" },
-                { type: "vendors", label: "Vendors" },
                 { type: "maintenance", label: "Maintenance" },
                 { type: "bookings", label: "Bookings" },
                 { type: "departments", label: "Departments" },
@@ -275,7 +281,7 @@ export default function GlobalSearch() {
                           className="flex items-center justify-between p-3 border border-zinc-200 hover:bg-zinc-50 rounded-xl text-left cursor-pointer transition-all"
                         >
                           <span>{item.label}</span>
-                          <span className="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded font-mono">{item.term}</span>
+                          <span className="text-[10px] text-zinc-700 bg-zinc-100 border border-zinc-200 px-1.5 py-0.5 rounded font-mono">{item.term}</span>
                         </button>
                       ))}
                     </div>
@@ -341,7 +347,8 @@ export default function GlobalSearch() {
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

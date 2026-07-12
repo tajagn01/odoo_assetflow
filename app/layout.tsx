@@ -38,15 +38,24 @@ export default function RootLayout({
           </QueryProvider>
         </AuthProvider>
         
-        {/* Service Worker registration */}
+        {/* Automatically clean up service worker and cache in development */}
         <script dangerouslySetInnerHTML={{ __html: `
           if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-              navigator.serviceWorker.register('/sw.js').then(function(reg) {
-                console.log('SW registered:', reg);
-              }).catch(function(err) {
-                console.error('SW registration failed:', err);
-              });
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+              for (let registration of registrations) {
+                registration.unregister().then(function() {
+                  console.log('Service Worker unregistered successfully');
+                });
+              }
+            });
+          }
+          if ('caches' in window) {
+            caches.keys().then(function(names) {
+              for (let name of names) {
+                caches.delete(name).then(function() {
+                  console.log('Cache cleared:', name);
+                });
+              }
             });
           }
         `}} />

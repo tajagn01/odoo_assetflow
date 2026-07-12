@@ -1,13 +1,12 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { Role, AssetStatus, AssetCondition } from "@prisma/client";
 import { ActionResponse } from "./auth";
 
 async function verifyAuthorized(): Promise<string | null> {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (!session || !["ADMIN", "ASSET_MANAGER"].includes(session.user.role)) {
     return null;
   }
@@ -139,7 +138,7 @@ export async function getAssets(filters?: {
   location?: string;
 }) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return [];
 
     const role = session.user.role;
@@ -391,7 +390,7 @@ export async function importAssetsAction(assets: Array<{
 // Fetch all activity logs (comments, updates, audits) for a specific asset
 export async function getAssetActivityLogs(assetId: string) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return [];
 
     return await db.activityLog.findMany({
@@ -417,7 +416,7 @@ export async function addAssetActivityLog(data: {
   text: string;
 }): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) {
       return { success: false, message: "Unauthorized." };
     }

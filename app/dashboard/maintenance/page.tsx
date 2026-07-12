@@ -30,6 +30,7 @@ export default function MaintenancePage() {
   const [schedules, setSchedules] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"tickets" | "preventive">("tickets");
+  const [draggedOverColumn, setDraggedOverColumn] = useState<string | null>(null);
 
   // Modals & Panels
   const [showAddModal, setShowAddModal] = useState(false);
@@ -393,6 +394,55 @@ export default function MaintenancePage() {
     }
   };
 
+  const handleCardDrop = async (e: React.DragEvent, targetStatus: MaintenanceStatus) => {
+    e.preventDefault();
+    if (!isManagerOrAdmin) return;
+    const requestId = e.dataTransfer.getData("text/plain");
+    if (!requestId) return;
+
+    const requestItem = requests.find((r) => r.id === requestId);
+    if (!requestItem) return;
+
+    if (requestItem.status === targetStatus) return;
+
+    if (targetStatus === MaintenanceStatus.PENDING) {
+      alert("Cannot transition a ticket back to Pending Approval.");
+      return;
+    }
+
+    if (targetStatus === MaintenanceStatus.APPROVED) {
+      if (requestItem.status === MaintenanceStatus.PENDING) {
+        await handleApprove(requestId);
+      } else {
+        alert("Only pending tickets can be moved to Approved / Setup.");
+      }
+      return;
+    }
+
+    if (targetStatus === MaintenanceStatus.TECHNICIAN_ASSIGNED) {
+      if (requestItem.status === MaintenanceStatus.PENDING || requestItem.status === MaintenanceStatus.APPROVED) {
+        setAssigningRequestId(requestId);
+        setTechName("");
+        setEstimatedCompletionDate("");
+      } else {
+        alert("Tickets can only be assigned to a technician from Pending or Approved status.");
+      }
+      return;
+    }
+
+    if (targetStatus === MaintenanceStatus.RESOLVED) {
+      if (requestItem.status === MaintenanceStatus.TECHNICIAN_ASSIGNED || requestItem.status === MaintenanceStatus.IN_PROGRESS || requestItem.status === MaintenanceStatus.APPROVED) {
+        setResolvingRequestId(requestId);
+        setResolutionNotes("");
+        setRepairCost("");
+        setRepairAttachments("");
+      } else {
+        alert("Only approved or active tickets can be resolved.");
+      }
+      return;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -506,7 +556,23 @@ export default function MaintenancePage() {
       {activeTab === "tickets" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 select-none animate-in fade-in">
           {columns.map((col) => (
-            <div key={col.title} className="rounded-xl border border-zinc-200 bg-zinc-50/50 p-4 space-y-4 min-h-[500px] h-fit">
+            <div 
+              key={col.title} 
+              onDragOver={(e) => isManagerOrAdmin && e.preventDefault()}
+              onDragEnter={() => isManagerOrAdmin && setDraggedOverColumn(col.status)}
+              onDragLeave={() => isManagerOrAdmin && setDraggedOverColumn(null)}
+              onDrop={(e) => {
+                if (isManagerOrAdmin) {
+                  setDraggedOverColumn(null);
+                  handleCardDrop(e, col.status);
+                }
+              }}
+              className={`rounded-xl border p-4 space-y-4 min-h-[500px] h-fit transition-all duration-200 ${
+                draggedOverColumn === col.status
+                  ? "border-zinc-950 bg-zinc-100 shadow-md scale-[1.01]"
+                  : "border-zinc-200 bg-zinc-50/50"
+              }`}
+            >
               <div className="flex items-center justify-between border-b border-zinc-200 pb-2">
                 <h2 className="text-xs font-black text-zinc-950 uppercase tracking-wider">{col.title}</h2>
                 <span className="text-[10px] font-bold bg-zinc-200 text-zinc-800 px-2 py-0.5 rounded-full">
@@ -521,7 +587,21 @@ export default function MaintenancePage() {
                   </div>
                 ) : (
                   col.items.map((req) => (
-                    <div key={req.id} className="rounded-lg border border-zinc-200 bg-white p-4 space-y-3 shadow-sm hover:border-zinc-300 transition-all">
+                    <div 
+                      key={req.id} 
+                      draggable={!!isManagerOrAdmin}
+                      onDragStart={(e) => {
+                        if (!isManagerOrAdmin) return;
+                        e.dataTransfer.setData("text/plain", req.id);
+                        e.currentTarget.style.opacity = "0.5";
+                      }}
+                      onDragEnd={(e) => {
+                        e.currentTarget.style.opacity = "1";
+                      }}
+                      className={`rounded-lg border border-zinc-200 bg-white p-4 space-y-3 shadow-sm hover:border-zinc-300 transition-all ${
+                        isManagerOrAdmin ? "cursor-grab active:cursor-grabbing hover:shadow-md" : ""
+                      }`}
+                    >
                       <div>
                         <div className="flex justify-between items-start">
                           <span className="text-[9px] font-mono font-bold bg-zinc-100 text-zinc-800 px-1.5 py-0.2 border border-zinc-200 rounded shrink-0">
@@ -552,7 +632,7 @@ export default function MaintenancePage() {
                           <div><span className="font-semibold text-zinc-500">Est. Done:</span> {new Date(req.estimatedCompletionDate).toLocaleDateString()}</div>
                         )}
                         {req.repairCost !== null && req.repairCost !== undefined && (
-                          <div><span className="font-semibold text-zinc-500">Cost:</span> ${req.repairCost}</div>
+                          <div><span className="font-semibold text-zinc-500">Cost:</span> ₹{req.repairCost}</div>
                         )}
                         {req.repairAttachments && (
                           <div><span className="font-semibold text-zinc-500">Attachments:</span> <a href={req.repairAttachments} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">View files</a></div>
@@ -668,7 +748,7 @@ export default function MaintenancePage() {
                           {s.lastMaintenanceDate ? new Date(s.lastMaintenanceDate).toLocaleDateString() : "Never"}
                         </td>
                         <td className="px-6 py-4 font-semibold text-zinc-750">{s.technician}</td>
-                        <td className="px-6 py-4 font-bold text-zinc-850">${s.estimatedCost.toFixed(2)}</td>
+                        <td className="px-6 py-4 font-bold text-zinc-850">₹{s.estimatedCost.toFixed(2)}</td>
                         <td className="px-6 py-4">
                           <span className={`text-[9px] font-black uppercase px-2 py-0.5 border rounded-full ${
                             s.status === "ACTIVE" 
@@ -915,7 +995,7 @@ export default function MaintenancePage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label htmlFor="repCost">Repair Cost ($)</Label>
+                  <Label htmlFor="repCost">Repair Cost (₹)</Label>
                   <Input 
                     id="repCost"
                     type="number"
@@ -1063,7 +1143,7 @@ export default function MaintenancePage() {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="schedCost">Estimated Cost ($)</Label>
+                <Label htmlFor="schedCost">Estimated Cost (₹)</Label>
                 <Input
                   id="schedCost"
                   type="number"
@@ -1235,7 +1315,7 @@ export default function MaintenancePage() {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="editSchedCost">Estimated Cost ($)</Label>
+                <Label htmlFor="editSchedCost">Estimated Cost (₹)</Label>
                 <Input
                   id="editSchedCost"
                   type="number"
@@ -1361,7 +1441,7 @@ export default function MaintenancePage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label htmlFor="perfCost">Actual Cost ($)</Label>
+                  <Label htmlFor="perfCost">Actual Cost (₹)</Label>
                   <Input
                     id="perfCost"
                     type="number"

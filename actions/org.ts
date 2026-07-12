@@ -1,14 +1,13 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { Role } from "@prisma/client";
 import { ActionResponse } from "./auth";
 
 // Reusable Admin checker
 async function verifyAdmin(): Promise<string | null> {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (!session || session.user.role !== Role.ADMIN) {
     return null;
   }
@@ -299,7 +298,7 @@ export async function deleteCategory(id: string): Promise<ActionResponse> {
 
 export async function getEmployees() {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return [];
 
     const role = session.user.role;
@@ -397,7 +396,7 @@ export async function updateEmployee(
 // Fetch full details of an individual employee for directory profiling
 export async function getEmployeeDetails(employeeId: string) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return null;
 
     // Block normal Employees from accessing other profile details
@@ -458,7 +457,7 @@ export async function getEmployeeDetails(employeeId: string) {
 // Fetch detailed profile for an individual department
 export async function getDepartmentDetails(departmentId: string) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return null;
 
     // Fetch department overview

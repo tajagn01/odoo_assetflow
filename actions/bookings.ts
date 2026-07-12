@@ -1,8 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { BookingStatus, AssetStatus } from "@prisma/client";
 import { ActionResponse } from "./auth";
 
@@ -30,7 +29,7 @@ export async function getBookings(assetId: string) {
 // Fetch all bookings for list views and agenda views
 export async function getAllBookings() {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return [];
 
     // Filter by role
@@ -85,7 +84,7 @@ export async function createBooking(data: {
   department?: string;
 }): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) {
       return { success: false, message: "Unauthorized. Please log in first." };
     }
@@ -207,7 +206,7 @@ export async function updateBooking(bookingId: string, data: {
   status?: BookingStatus;
 }): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return { success: false, message: "Unauthorized." };
 
     const start = new Date(data.startTime);
@@ -302,7 +301,7 @@ export async function updateBooking(bookingId: string, data: {
 // Cancel booking
 export async function cancelBooking(bookingId: string): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) {
       return { success: false, message: "Unauthorized." };
     }
@@ -360,7 +359,7 @@ export async function duplicateBooking(bookingId: string, data: {
   endTime: string;
 }): Promise<ActionResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return { success: false, message: "Unauthorized." };
 
     const booking = await db.resourceBooking.findUnique({

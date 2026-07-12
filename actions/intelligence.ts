@@ -1,13 +1,12 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { AssetStatus, BookingStatus, AllocationStatus, Role, MaintenanceStatus } from "@prisma/client";
 
 // Reusable permission helper
 async function verifyAdminOrManager(): Promise<boolean> {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (!session) return false;
   return ["ADMIN", "ASSET_MANAGER"].includes(session.user.role);
 }
@@ -15,7 +14,7 @@ async function verifyAdminOrManager(): Promise<boolean> {
 // 1. Lifecycle Timeline builder
 export async function getAssetTimeline(assetId: string) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) return [];
 
     const asset = await db.asset.findUnique({
@@ -633,30 +632,6 @@ export async function globalSearch(query: string, filters?: { type?: string }) {
           subtitle: `Email: ${u.email} • Role: ${u.role.replace("_", " ")} • Title: ${u.jobTitle || 'Associate'}`,
           type: "Employee",
           href: `/dashboard/admin/org?tab=employees`
-        });
-      });
-    }
-
-    // Search Vendors
-    if (!filters?.type || filters.type === "vendors") {
-      const vendors = await (db as any).vendor.findMany({
-        where: {
-          deletedAt: null,
-          OR: [
-            { companyName: { contains: q, mode: "insensitive" } },
-            { contactPerson: { contains: q, mode: "insensitive" } },
-            { email: { contains: q, mode: "insensitive" } }
-          ]
-        },
-        take: 5
-      });
-      vendors.forEach((v: any) => {
-        results.push({
-          id: v.id,
-          title: v.companyName,
-          subtitle: `Contact: ${v.contactPerson} • Email: ${v.email}`,
-          type: "Vendor",
-          href: `/dashboard/vendors/${v.id}`
         });
       });
     }

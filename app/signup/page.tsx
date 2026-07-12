@@ -231,18 +231,52 @@ export default function SignupPage() {
             <span className="text-sm font-black tracking-wider uppercase">ASSET<span className="text-zinc-400 font-medium">FLOW</span></span>
           </div>
 
-          <div className="relative z-10 space-y-4">
-            <blockquote className="space-y-2">
-              <p className="text-lg font-medium leading-relaxed text-zinc-100">
-                "AssetFlow completely replaced our inventory spreadsheets. The double-allocation checker and resource calendars work flawlessly."
+          <div className="relative z-10 my-auto space-y-6">
+            <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <h2 className="text-3xl font-black tracking-tight text-white">Get Started!</h2>
+              <p className="text-xs text-zinc-400 font-semibold leading-relaxed">
+                Create your employee profile to join your company department space. Request custody transitions, check out devices, and book reservations conflict-free.
               </p>
-              <footer className="text-xs text-zinc-500 font-bold uppercase tracking-wider">
-                — Sarah Jenkins, VP of Operations
+            </div>
+            
+            <div className="h-px bg-zinc-800" />
+            
+            <blockquote className="space-y-2">
+              <p className="text-sm font-medium leading-relaxed text-zinc-300 italic">
+                "Our team registers and returns devices in seconds. Booking meeting rooms and booking company vehicles is completely conflict-free."
+              </p>
+              <footer className="text-[10px] text-zinc-550 font-bold uppercase tracking-wider">
+                — David Miller, IT Administrator
               </footer>
             </blockquote>
+
+            {/* Platform Security & Highlights Detail */}
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 space-y-2.5">
+              <span className="text-[8px] font-black text-zinc-550 uppercase tracking-widest block">
+                Platform Security & Highlights
+              </span>
+              <div className="grid grid-cols-2 gap-2.5 text-[10px] font-bold text-zinc-400">
+                <div className="flex items-start gap-1.5">
+                  <span className="text-zinc-550 font-black">✓</span>
+                  <span>Strict RBAC Security Matrices</span>
+                </div>
+                <div className="flex items-start gap-1.5">
+                  <span className="text-zinc-550 font-black">✓</span>
+                  <span>Immutable System Operations Logs</span>
+                </div>
+                <div className="flex items-start gap-1.5">
+                  <span className="text-zinc-550 font-black">✓</span>
+                  <span>Depreciation SL & WDV Projection Engines</span>
+                </div>
+                <div className="flex items-start gap-1.5">
+                  <span className="text-zinc-550 font-black">✓</span>
+                  <span>Real-time Double Booking Allocation Checkers</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="relative z-10 text-[9px] text-zinc-500 font-bold tracking-wider uppercase">
+          <div className="relative z-10 text-[9px] text-zinc-550 font-bold tracking-wider uppercase">
             Enterprise Asset Management ERP v1.0
           </div>
         </div>

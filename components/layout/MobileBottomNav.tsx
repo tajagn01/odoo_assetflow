@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { LayoutDashboard, Package, Sparkles, Bell, Search } from "lucide-react";
+import { LayoutDashboard, Package, CalendarDays, Bell, Search } from "lucide-react";
 
 export default function MobileBottomNav() {
   const triggerSearch = () => {
@@ -24,9 +24,9 @@ export default function MobileBottomNav() {
         <Package className="h-5 w-5 text-zinc-400" />
         <span className="mt-1">Assets</span>
       </Link>
-      <Link href="/dashboard/ai" className="flex flex-col items-center justify-center text-zinc-500 hover:text-zinc-950 font-bold text-[10px] w-12">
-        <Sparkles className="h-5 w-5 text-indigo-500 fill-indigo-50" />
-        <span className="mt-1">AI Hub</span>
+      <Link href="/dashboard/bookings" className="flex flex-col items-center justify-center text-zinc-500 hover:text-zinc-950 font-bold text-[10px] w-12">
+        <CalendarDays className="h-5 w-5 text-zinc-400" />
+        <span className="mt-1">Bookings</span>
       </Link>
       <Link href="/dashboard/notifications" className="flex flex-col items-center justify-center text-zinc-500 hover:text-zinc-950 font-bold text-[10px] w-12">
         <Bell className="h-5 w-5 text-zinc-400" />
