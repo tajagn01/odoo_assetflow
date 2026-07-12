@@ -63,10 +63,24 @@ export async function getDashboardMetrics() {
       take: 5,
     });
 
-    // 5. Role specific counts
-    // For normal employees: count of their allocated assets
-    const myAssetsCount = await db.asset.count({
+    // 5. Role specific counts and lists
+    const myAssets = await db.asset.findMany({
       where: { currentHolderId: session.user.id, deletedAt: null },
+      select: { id: true, tag: true, name: true, location: true, condition: true },
+    });
+
+    const myAssetsCount = myAssets.length;
+
+    const myBookings = await db.resourceBooking.findMany({
+      where: {
+        userId: session.user.id,
+        status: { in: [BookingStatus.UPCOMING, BookingStatus.ONGOING] },
+      },
+      include: {
+        asset: { select: { name: true, tag: true } },
+      },
+      orderBy: { startTime: "asc" },
+      take: 5,
     });
 
     const myBookingsCount = await db.resourceBooking.count({
@@ -74,6 +88,10 @@ export async function getDashboardMetrics() {
         userId: session.user.id,
         status: { in: [BookingStatus.UPCOMING, BookingStatus.ONGOING] },
       },
+    });
+
+    const myRequestsCount = await db.maintenanceRequest.count({
+      where: { raisedById: session.user.id },
     });
 
     return {
@@ -89,6 +107,9 @@ export async function getDashboardMetrics() {
       personal: {
         myAssetsCount,
         myBookingsCount,
+        myRequestsCount,
+        myAssets,
+        myBookings,
       },
     };
   } catch (error) {

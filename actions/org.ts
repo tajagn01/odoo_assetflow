@@ -23,9 +23,18 @@ export async function getDepartments() {
   try {
     return await db.department.findMany({
       where: { deletedAt: null },
-      include: {
-        parent: true,
-        manager: true,
+      select: {
+        id: true,
+        name: true,
+        parentId: true,
+        managerId: true,
+        status: true,
+        parent: {
+          select: { id: true, name: true },
+        },
+        manager: {
+          select: { id: true, name: true, email: true, role: true },
+        },
       },
       orderBy: { name: "asc" },
     });

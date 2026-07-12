@@ -82,6 +82,18 @@ model User {
   departmentId   String?     @map("department_id")
   department     Department? @relation("UserDepartment", fields: [departmentId], references: [id])
   
+  phone                     String?
+  bio                       String?
+  location                  String?
+  timezone                  String?     @default("UTC")
+  language                  String?     @default("en")
+  avatarUrl                 String?     @map("avatar_url")
+  jobTitle                  String?     @default("Associate") @map("job_title")
+  employeeId                String?     @map("employee_id")
+  appearanceTheme           String?     @default("light") @map("appearance_theme")
+  emailNotificationsEnabled Boolean     @default(true) @map("email_notifications_enabled")
+  lastLogin                 DateTime?   @map("last_login")
+
   // Relations
   managedDepartments Department[] @relation("DeptHead")
   heldAssets        Asset[]      @relation("AssetHolder")
