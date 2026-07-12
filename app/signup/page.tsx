@@ -153,6 +153,29 @@ export default function SignupPage() {
                   }
                   className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus-visible:ring-zinc-950 dark:focus-visible:ring-white h-10"
                 />
+                
+                {/* Real-time Validation Checklist */}
+                {password && (
+                  <div className="p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-zinc-100 dark:border-zinc-800 text-[10px] space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <span className="font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-1">Security Matrix</span>
+                    <div className="flex items-center space-x-1.5">
+                      {password.length >= 8 ? <span className="text-zinc-950 dark:text-white font-bold">✓</span> : <span className="text-zinc-300 dark:text-zinc-700">✗</span>}
+                      <span className={password.length >= 8 ? "font-bold text-zinc-900 dark:text-white" : "text-zinc-400 dark:text-zinc-500"}>At least 8 characters</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5">
+                      {/[A-Z]/.test(password) && /[a-z]/.test(password) ? <span className="text-zinc-950 dark:text-white font-bold">✓</span> : <span className="text-zinc-300 dark:text-zinc-700">✗</span>}
+                      <span className={/[A-Z]/.test(password) && /[a-z]/.test(password) ? "font-bold text-zinc-900 dark:text-white" : "text-zinc-400 dark:text-zinc-500"}>Upper & lowercase letters</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5">
+                      {/[0-9]/.test(password) ? <span className="text-zinc-950 dark:text-white font-bold">✓</span> : <span className="text-zinc-300 dark:text-zinc-700">✗</span>}
+                      <span className={/[0-9]/.test(password) ? "font-bold text-zinc-900 dark:text-white" : "text-zinc-400 dark:text-zinc-500"}>At least one numeric digit</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5">
+                      {/[^a-zA-Z0-9]/.test(password) ? <span className="text-zinc-950 dark:text-white font-bold">✓</span> : <span className="text-zinc-300 dark:text-zinc-700">✗</span>}
+                      <span className={/[^a-zA-Z0-9]/.test(password) ? "font-bold text-zinc-900 dark:text-white" : "text-zinc-400 dark:text-zinc-500"}>At least one special character</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Terms & Conditions */}

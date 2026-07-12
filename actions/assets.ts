@@ -160,11 +160,38 @@ export async function getAssets(filters?: {
 
     const assets = await db.asset.findMany({
       where: whereClause,
-      include: {
-        category: true,
-        department: true,
+      select: {
+        id: true,
+        tag: true,
+        name: true,
+        categoryId: true,
+        serialNumber: true,
+        acquisitionDate: true,
+        acquisitionCost: true,
+        condition: true,
+        status: true,
+        currentHolderId: true,
+        location: true,
+        isSharedResource: true,
+        departmentId: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        department: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         currentHolder: {
-          select: { id: true, name: true, email: true },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
         },
       },
       orderBy: { createdAt: "desc" },

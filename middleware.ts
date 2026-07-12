@@ -24,6 +24,14 @@ export default withAuth(
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
 
+    // Audits and Reports panels - restricted to Admin and Asset Manager
+    if (
+      (path.startsWith("/dashboard/audits") || path.startsWith("/dashboard/reports")) &&
+      !["ADMIN", "ASSET_MANAGER"].includes(token.role as string)
+    ) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+
     // Department Head or higher access
     if (
       path.startsWith("/dashboard/department-head") &&

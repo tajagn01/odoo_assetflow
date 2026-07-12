@@ -15,8 +15,10 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { hasPermission, SystemResource, ResourceAction } from "@/lib/permissions";
 
 interface SidebarProps {
   role: string;
@@ -27,46 +29,67 @@ export default function Sidebar({ role }: SidebarProps) {
   const { isOpen, toggle } = useSidebarStore();
 
   // Configuration for links based on RBAC rules
-  const menuItems = [
+  const menuItems: {
+    title: string;
+    href: string;
+    icon: any;
+    resource?: SystemResource;
+    action?: ResourceAction;
+    free?: boolean;
+  }[] = [
     {
       title: "Overview",
       href: "/dashboard",
       icon: LayoutDashboard,
-      roles: ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
+      free: true,
     },
     {
       title: "Asset Directory",
       href: "/dashboard/assets",
       icon: Package,
-      roles: ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
+      resource: "ASSETS",
+      action: "READ",
     },
     {
       title: "Bookings",
       href: "/dashboard/bookings",
       icon: CalendarDays,
-      roles: ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
+      resource: "BOOKINGS",
+      action: "READ",
     },
     {
       title: "Maintenance",
       href: "/dashboard/maintenance",
       icon: Wrench,
-      roles: ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
+      resource: "MAINTENANCE",
+      action: "READ",
     },
     {
       title: "Asset Audits",
       href: "/dashboard/audits",
       icon: ShieldCheck,
-      roles: ["ADMIN", "ASSET_MANAGER"],
+      resource: "AUDITS",
+      action: "READ",
     },
     {
       title: "Organization",
       href: "/dashboard/admin/org",
       icon: Building2,
-      roles: ["ADMIN"],
+      resource: "DEPARTMENTS",
+      action: "CREATE", // only admin manages org
+    },
+    {
+      title: "Reports & Analytics",
+      href: "/dashboard/reports",
+      icon: BarChart3,
+      resource: "REPORTS",
+      action: "READ",
     },
   ];
 
-  const filteredItems = menuItems.filter((item) => role && item.roles.includes(role));
+  const filteredItems = menuItems.filter(
+    (item) => item.free || (role && item.resource && item.action && hasPermission(role, item.resource, item.action))
+  );
 
   return (
     <aside

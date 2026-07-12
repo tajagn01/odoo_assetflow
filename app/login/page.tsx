@@ -156,7 +156,7 @@ function LoginFormContent() {
                   </Label>
                 </div>
                 <Link
-                  href="#"
+                  href="/forgot-password"
                   className="text-xs font-bold text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors"
                 >
                   Forgot password?
@@ -190,6 +190,7 @@ function LoginFormContent() {
               {/* Github */}
               <button
                 type="button"
+                onClick={() => alert("OAuth Single Sign-On is available in Enterprise tier only. Please log in with your email credentials.")}
                 className="flex flex-1 h-10 items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 active:scale-95 transition-all text-zinc-900 dark:text-white text-xs font-bold gap-2 cursor-pointer shadow-sm"
                 title="Sign in with GitHub"
               >
@@ -202,6 +203,7 @@ function LoginFormContent() {
               {/* Google */}
               <button
                 type="button"
+                onClick={() => alert("OAuth Single Sign-On is available in Enterprise tier only. Please log in with your email credentials.")}
                 className="flex flex-1 h-10 items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 active:scale-95 transition-all text-zinc-900 dark:text-white text-xs font-bold gap-2 cursor-pointer shadow-sm"
                 title="Sign in with Google"
               >
