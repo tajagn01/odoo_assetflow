@@ -98,7 +98,7 @@ export async function createAuditCycle(data: {
       });
 
       return cycle;
-    });
+    }, { maxWait: 15000, timeout: 20000 });
 
     return { success: true, message: "Audit cycle activated. All active assets snapshotted.", data: result };
   } catch (error: any) {
@@ -241,7 +241,7 @@ export async function closeAuditCycle(cycleId: string): Promise<ActionResponse> 
       });
 
       return updatedCycle;
-    });
+    }, { maxWait: 15000, timeout: 20000 });
 
     return { success: true, message: "Audit cycle locked and closed. Discrepancy report compiled.", data: result };
   } catch (error) {

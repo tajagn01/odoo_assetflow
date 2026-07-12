@@ -119,7 +119,7 @@ export async function createAsset(data: {
       });
 
       return asset;
-    });
+    }, { maxWait: 15000, timeout: 20000 });
 
     return { success: true, message: `Asset created successfully under tag ${result.tag}.`, data: serializeAsset(result) };
   } catch (error: any) {
@@ -278,5 +278,79 @@ export async function deleteAsset(id: string): Promise<ActionResponse> {
   } catch (error) {
     console.error("Failed to delete asset:", error);
     return { success: false, message: "Failed to delete asset." };
+  }
+}
+
+export async function importAssetsAction(assets: Array<{
+  name: string;
+  categoryId: string;
+  serialNumber: string;
+  acquisitionDate: string;
+  acquisitionCost: number;
+  condition: AssetCondition;
+  location: string;
+  isSharedResource: boolean;
+  departmentId?: string | null;
+}>): Promise<ActionResponse> {
+  try {
+    const adminOrManagerId = await verifyAuthorized();
+    if (!adminOrManagerId) {
+      return { success: false, message: "Unauthorized." };
+    }
+
+    if (!assets || assets.length === 0) {
+      return { success: false, message: "No assets to import." };
+    }
+
+    const result = await db.$transaction(async (tx) => {
+      const createdAssets = [];
+
+      for (const item of assets) {
+        // Validate uniqueness of serial
+        const existing = await tx.asset.findUnique({
+          where: { serialNumber: item.serialNumber.trim() },
+        });
+
+        if (existing) {
+          throw new Error(`Serial number '${item.serialNumber}' already exists.`);
+        }
+
+        const tag = await generateAssetTag(tx);
+        const asset = await tx.asset.create({
+          data: {
+            tag,
+            name: item.name.trim(),
+            categoryId: item.categoryId,
+            serialNumber: item.serialNumber.trim(),
+            acquisitionDate: new Date(item.acquisitionDate || new Date()),
+            acquisitionCost: Number(item.acquisitionCost) || 0,
+            condition: item.condition || AssetCondition.NEW,
+            status: AssetStatus.AVAILABLE,
+            location: item.location.trim() || "Warehouse",
+            isSharedResource: Boolean(item.isSharedResource),
+            departmentId: item.departmentId || null,
+          },
+        });
+
+        createdAssets.push(asset);
+
+        await tx.activityLog.create({
+          data: {
+            userId: adminOrManagerId,
+            action: "CREATE_ASSET",
+            entityType: "Asset",
+            entityId: asset.id,
+            newValues: { tag, name: asset.name },
+          },
+        });
+      }
+
+      return createdAssets;
+    }, { maxWait: 15000, timeout: 30000 });
+
+    return { success: true, message: `Successfully imported ${result.length} assets.`, data: result.map(serializeAsset) };
+  } catch (error: any) {
+    console.error("Bulk CSV import failed:", error);
+    return { success: false, message: error.message || "Failed to import assets." };
   }
 }

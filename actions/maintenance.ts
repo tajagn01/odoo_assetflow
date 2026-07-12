@@ -133,7 +133,7 @@ export async function transitionMaintenance(data: {
       });
 
       return request;
-    });
+    }, { maxWait: 15000, timeout: 20000 });
 
     return { success: true, message: `Maintenance request transitioned to ${data.status}.`, data: result };
   } catch (error: any) {

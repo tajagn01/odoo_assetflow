@@ -107,6 +107,25 @@ export default function MaintenancePage() {
     }
   };
 
+  const handleReject = async (requestId: string) => {
+    setError("");
+    setSuccess("");
+    try {
+      const res = await transitionMaintenance({
+        requestId,
+        status: MaintenanceStatus.REJECTED,
+      });
+      if (res.success) {
+        setSuccess("Maintenance request has been rejected.");
+        await loadRequests();
+      } else {
+        setError(res.message || "Failed to reject.");
+      }
+    } catch (err) {
+      setError("Failed to transition status.");
+    }
+  };
+
   const handleAssignTech = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!assigningRequestId) return;
@@ -277,12 +296,20 @@ export default function MaintenancePage() {
                     {isManagerOrAdmin && (
                       <div className="border-t border-zinc-100 pt-2 flex flex-wrap gap-1">
                         {req.status === "PENDING" && (
-                          <button
-                            onClick={() => handleApprove(req.id)}
-                            className="w-full text-center py-1 text-[10px] font-bold bg-zinc-950 text-white rounded hover:bg-zinc-900 cursor-pointer"
-                          >
-                            Approve & Set Under Maintenance
-                          </button>
+                          <div className="flex w-full gap-2">
+                            <button
+                              onClick={() => handleApprove(req.id)}
+                              className="flex-1 text-center py-1 text-[10px] font-bold bg-zinc-950 text-white rounded hover:bg-zinc-900 cursor-pointer"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleReject(req.id)}
+                              className="flex-1 text-center py-1 text-[10px] font-bold border border-red-200 text-red-600 rounded hover:bg-red-50 cursor-pointer"
+                            >
+                              Reject
+                            </button>
+                          </div>
                         )}
                         {req.status === "APPROVED" && (
                           <button

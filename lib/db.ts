@@ -12,13 +12,20 @@ if (!connectionString) {
   throw new Error("DATABASE_URL is not set in environmental variables.");
 }
 
+const poolConfig: pg.PoolConfig = {
+  connectionString,
+  max: 5,
+  connectionTimeoutMillis: 15000,
+  idleTimeoutMillis: 30000,
+};
+
 if (process.env.NODE_ENV === "production") {
-  const pool = new pg.Pool({ connectionString });
+  const pool = new pg.Pool(poolConfig);
   const adapter = new PrismaPg(pool);
   prisma = new PrismaClient({ adapter });
 } else {
   if (!globalForPrisma.prisma) {
-    const pool = new pg.Pool({ connectionString });
+    const pool = new pg.Pool(poolConfig);
     const adapter = new PrismaPg(pool);
     globalForPrisma.prisma = new PrismaClient({ adapter });
   }
@@ -26,3 +33,4 @@ if (process.env.NODE_ENV === "production") {
 }
 
 export const db = prisma;
+

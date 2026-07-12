@@ -16,6 +16,9 @@ import {
   ChevronRight,
   LogOut,
   BarChart3,
+  Activity,
+  HelpCircle,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { hasPermission, SystemResource, ResourceAction } from "@/lib/permissions";
@@ -79,11 +82,30 @@ export default function Sidebar({ role }: SidebarProps) {
       action: "CREATE", // only admin manages org
     },
     {
+      title: "System Logs",
+      href: "/dashboard/admin/logs",
+      icon: Activity,
+      resource: "LOGS",
+      action: "READ", // Admin only
+    },
+    {
       title: "Reports & Analytics",
       href: "/dashboard/reports",
       icon: BarChart3,
       resource: "REPORTS",
       action: "READ",
+    },
+    {
+      title: "Help Center",
+      href: "/dashboard/help",
+      icon: HelpCircle,
+      free: true,
+    },
+    {
+      title: "About",
+      href: "/dashboard/about",
+      icon: Info,
+      free: true,
     },
   ];
 
